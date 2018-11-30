@@ -1,3 +1,4 @@
+const spotify_client_id = '';
 const spotify_scopes = [
     'playlist-read-private',
     'playlist-read-collaborative',
