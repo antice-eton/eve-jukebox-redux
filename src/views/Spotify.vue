@@ -1,8 +1,11 @@
 <template>
-<v-layout row wrap>
-    <Account @spotify-enabled="onSpotifyEnabled" @spotify-disabled="onSpotifyDisabled"/>
-    <Devices v-if="spotify_enabled"/>
-    <Playlists v-if="spotify_enabled"/>
+  <v-layout row wrap>
+    <Account
+      @spotify-enabled="onSpotifyEnabled"
+      @spotify-disabled="onSpotifyDisabled"
+    />
+    <Devices v-if="spotify_enabled" />
+    <Playlists v-if="spotify_enabled" />
 </v-layout>
 </template>
 

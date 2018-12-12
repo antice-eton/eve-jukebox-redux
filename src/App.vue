@@ -1,53 +1,9 @@
 <template>
-<v-app id="esc" dark>
-    <v-navigation-drawer
-        v-model="drawer"
-        clipped
-        fixed
-        app>
-        <v-list dense>
-            <v-list-tile @click="$router.push({name:'spotify'})">
-                <v-list-tile-avatar>
-                    <img :src="spotify_icon" class="spotify-icon">
-                </v-list-tile-avatar>
-                <v-list-tile-content>
-                    <v-list-tile-title>Spotify</v-list-tile-title>
-                    <v-list-tile-sub-title>
-                        Configure your Spotify account
-                    </v-list-tile-sub-title>
-                </v-list-tile-content>
-            </v-list-tile>
-
-            <v-list-tile @click="$router.push({name:'eve'})">
-                <v-list-tile-avatar>
-                    <img :src="eve_icon" class="eve-icon">
-                </v-list-tile-avatar>
-                <v-list-tile-content>
-                    <v-list-tile-title>Eve Online</v-list-tile-title>
-                    <v-list-tile-sub-title>
-                        Configure your EVE Online Account
-                    </v-list-tile-sub-title>
-                </v-list-tile-content>
-            </v-list-tile>
-        </v-list>
-    </v-navigation-drawer>
-
-    <v-toolbar app fixed clipped-left>
-        <v-toolbar-title>Eve Spotify Controller</v-toolbar-title>
-        <v-spacer/>
-        <v-toolbar-items>
-            <v-btn flat>About</v-btn>
-            <v-btn flat>Github</v-btn>
-        </v-toolbar-items>
-    </v-toolbar>
-
-    <v-content>
-        <v-container fluid grid-list-md>
-            <router-view></router-view>
-        </v-container>
-    </v-content>
-
-</v-app>
+    <v-app id="ejr" dark>
+        <Toolbar />
+        <LeftDrawer />
+        <RouterView />
+    </v-app>
 </template>
 
 <style lang="scss">
@@ -65,11 +21,21 @@
 </style>
 <script>
 import axios from 'axios';
+import Main from './views/Main.vue';
+
+import Toolbar from './components/AppToolbar.vue';
+import LeftDrawer from './components/LeftDrawer.vue';
 
 export default {
     name: 'App',
+    components: {
+        Main,
+        Toolbar,
+        LeftDrawer
+    },
     data () {
         return {
+            loading: true,
             drawer: true
         }
     },
@@ -81,7 +47,52 @@ export default {
 
         eve_icon() {
             return require('./assets/eve-logo.png');
+        },
+
+        character_id() {
+            return this.$store.state.active_character_id;
+        },
+
+        character_name() {
+            return this.$store.state.active_character_name;
+        },
+
+        character_portrait() {
+            return '/portraits/' + this.character_id + '_512.jpg';
+        },
+
+        characters() {
+            return this.$store.state.characters;
         }
     },
+
+    watch: {
+        character_id(newVal) {
+            if (newVal) {
+                this.drawer = true;
+            } else {
+                this.drawer = false;
+            }
+        }
+    },
+
+    created() {
+        axios.get('/api/session/status')
+        .then(() => axios.get('/api/eve/characters'))
+        .then((res) => {
+            this.$store.commit('SET_CHARACTERS', res.data.characters);
+        })
+        .then(() => axios.get('/api/eve/active_character'))
+        .then((res) => {
+            const char = res.data;
+            this.$store.commit('ACTIVATE_CHARACTER', char);
+            this.loading = false;
+        })
+        .catch((err) => {
+            this.loading = false;
+            console.error(err.response);
+            this.$router.push('/login');
+        });
+    }
 }
 </script>

@@ -11,6 +11,8 @@ module.exports = {
     "listenHost": "0.0.0.0",
     "listenPort": "8888",
 
+    "images_dir": "image_store",
+
     "spotify": {
         "clientId": "",
         "clientSecret": "",

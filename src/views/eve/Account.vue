@@ -1,24 +1,26 @@
 <template>
-    <v-flex xs12>
-        <v-card>
-            <v-toolbar
-                card
-                dark>
-                <v-toolbar-title>EVE Online Account</v-toolbar-title>
-            </v-toolbar>
-            <v-card-text v-if="eve_enabled === false">
-                <v-btn
-                    :loading="linking_eve"
-                    :disabled="linking_eve || config_loaded === false"
-                    @click="linkEve">
-                        <img :src="eve_login"/>
-                </v-btn>
-            </v-card-text>
-            <v-card-text v-else>
-                Logged in as <strong>{{ account_name }}</strong>.
-            </v-card-text>
-        </v-card>
-    </v-flex>
+  <VFlex xs12>
+    <VCard>
+      <VToolbar
+        card
+        dark
+      >
+        <VToolbarTitle>EVE Online Account</VToolbarTitle>
+      </VToolbar>
+      <VCardText v-if="eve_enabled === false">
+        <VBtn
+          :loading="linking_eve"
+          :disabled="linking_eve || config_loaded === false"
+          @click="linkEve"
+        >
+          <img :src="eve_login">
+        </VBtn>
+      </VCardText>
+      <VCardText v-else>
+        Logged in as <strong>{{ account_name }}</strong>.
+      </VCardText>
+    </VCard>
+  </VFlex>
 </template>
 
 <script>
@@ -38,24 +40,24 @@ export default {
             api_state: '',
             client_id: '',
             scopes: [],
-            eve_login: require('@/assets/eve-login.png')
+            eve_login: require('@/assets/eve-login.png'),
+            _authWindow: null
         };
     },
 
     methods: {
 
         linkEve() {
+
+            this.linking_eve = true;
+
             const eveUrl = eve_authorize_endpoint +
             '?response_type=code' +
             '&client_id=' + this.client_id +
             '&scope=' + encodeURIComponent(this.scopes.join(' ')) +
-            '&state=' + encodeURIComponent(this.api_state) +
             '&redirect_uri=' + encodeURIComponent(eve_authorize_redirect);
 
-            const eveWindow = window.open('/api/eve/authenticate', 'eve_auth', 'menubar=no,location=no,resizable=no,scrollbars=yes,status=yes,toolbar=no,height=425,width=350');
-            eveWindow.onunload = () => {
-                this.checkEve();
-            };
+            this._authWindow = window.open('/api/eve/authenticate', 'eve_auth', 'menubar=no,location=no,resizable=no,scrollbars=yes,status=yes,toolbar=no,height=525,width=400');
         },
 
         refreshUserInfo() {
@@ -108,7 +110,20 @@ export default {
                 this.scopes = scopesRes.data.scopes;
                 this.config_loaded = true;
             }));
+        },
+
+        onVerified(e) {
+            this._authWindow.close();
+            this.checkEve();
         }
+    },
+
+    beforeMount() {
+        window.document.addEventListener('verified', this.onVerified);
+    },
+
+    beforeDestroy() {
+        window.document.removeEventListener('verified', this.onVerified);
     },
 
     mounted() {

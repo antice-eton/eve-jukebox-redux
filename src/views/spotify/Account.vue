@@ -1,24 +1,22 @@
 <template>
-    <v-flex xs12>
-        <v-card>
-            <v-toolbar
-                card
-                dark>
-                <v-toolbar-title>Spotify Account</v-toolbar-title>
-            </v-toolbar>
-            <v-card-text v-if="spotify_enabled === false">
-                <v-btn
-                    :loading="linking_spotify"
-                    :disabled="linking_spotify || config_loaded === false"
-                    @click="linkSpotify">
-                        Connect to Spotify
-                </v-btn>
-            </v-card-text>
-            <v-card-text v-else>
-                Logged in as <strong>{{ account_name }}</strong>.
-            </v-card-text>
-        </v-card>
-    </v-flex>
+<v-flex xs12>
+    <v-card>
+        <v-toolbar card dark>
+            <v-toolbar-title>Spotify Account</v-toolbar-title>
+        </v-toolbar>
+        <v-card-text v-if="spotify_enabled === false">
+            <v-btn
+                :loading="linking_spotify"
+                :disabled="linking_spotify || config_loaded === false"
+                @click="linkSpotify">
+                Connect to Spotify
+            </v-btn>
+        </v-card-text>
+        <v-card-text v-else>
+            Logged in as <strong>{{ account_name }}</strong>.
+        </v-card-text>
+    </v-card>
+</v-flex>
 </template>
 
 <script>
@@ -36,7 +34,8 @@ export default {
             account_name: '',
             config_loaded: true,
             client_id: '',
-            scopes: []
+            scopes: [],
+            _authWindow: null
         };
     },
 
@@ -50,10 +49,7 @@ export default {
             '&scope=' + encodeURIComponent(this.scopes.join(' ')) +
             '&redirect_uri=' + encodeURIComponent(spotify_authorize_redirect);
 
-            const spotifyWindow = window.open('/api/spotify/authenticate', 'spotify_auth', 'menubar=no,location=no,resizable=no,scrollbars=yes,status=yes,toolbar=no,height=425,width=350');
-            spotifyWindow.onunload = () => {
-                this.checkSpotify();
-            };
+            this._authWindow = window.open('/api/spotify/authenticate', 'spotify_auth', 'menubar=no,location=no,resizable=no,scrollbars=yes,status=yes,toolbar=no,height=525,width=400');
         },
 
         checkSpotify() {
@@ -103,17 +99,18 @@ export default {
             }));
         },
 
-        onSpotifyVerified(e) {
-            console.log('spotify verified!', e);
+        onVerified(e) {
+            this._authWindow.close();
+            this.checkSpotify();
         }
     },
 
     beforeMount() {
-        window.document.addEventListener('spotify-verified', this.onSpotifyVerified);
+        window.document.addEventListener('verified', this.onVerified);
     },
 
     beforeDestroy() {
-        window.document.removeEventListener('spotify-verified', this.onSpotifyVerified);
+        window.document.removeEventListener('verified', this.onVerified);
     },
 
     mounted() {

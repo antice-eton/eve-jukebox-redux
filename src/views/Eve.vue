@@ -1,6 +1,9 @@
 <template>
-<v-layout row wrap>
-    <Account/>
+  <v-layout
+    row
+    wrap
+  >
+    <Account />
 </v-layout>
 </template>
 
