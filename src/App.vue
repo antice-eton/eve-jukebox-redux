@@ -18,6 +18,9 @@
     height: 2em;
     vertical-align: middle;
 }
+
+@import './sass/fonts.scss';
+
 </style>
 <script>
 import axios from 'axios';

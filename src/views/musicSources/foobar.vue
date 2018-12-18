@@ -42,13 +42,14 @@ import axios from 'axios';
 export default {
     data() {
         return {
-            foobar_url: 'http://localhost:8880',
+            foobar_url: 'http://localhost:8880'
             testing_foobar: false
         }
     },
 
     methods: {
         testFoobar() {
+            axios.post('/api/music_sources/')
             axios.get('http://localhost:8880/api/playlists');
         }
     }

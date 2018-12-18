@@ -76,7 +76,7 @@ export default {
 
     methods: {
         activateCharacter(char) {
-            axios.post('/api/active_character', {
+            axios.post('/api/eve/active_character', {
                 character_id: char.character_id
             })
             .then(() => {
@@ -86,7 +86,7 @@ export default {
         },
 
         logout() {
-            axios.delete('/api/active_character')
+            axios.delete('/api/eve/active_character')
             .then(() => {
                 this.$store.commit('RESET_ACTIVATION');
                 this.$router.push('/login');

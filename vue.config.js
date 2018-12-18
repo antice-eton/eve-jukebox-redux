@@ -2,6 +2,11 @@ const appConfig = require('./src/server/config.js');
 
 const express = require('express');
 
+const fs = require('fs');
+const path = require('path');
+
+
+
 module.exports = {
     devServer: {
         before: function(app) {

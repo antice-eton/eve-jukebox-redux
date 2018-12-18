@@ -36,7 +36,7 @@
 
                                 <v-list-tile-action>
                                     <v-btn icon ripple v-if="deleting_character !== char.character_id">
-                                        <v-icon @click="deleteCharacter(char.character_id)">delete</v-icon>
+                                        <v-icon @click.native.prevent="deleteCharacter(char.character_id)">delete</v-icon>
                                     </v-btn>
                                     <v-progress-circular
                                     indeterminate
@@ -139,7 +139,7 @@ export default {
 
         async deleteCharacter(character_id) {
             this.deleting_character = character_id;
-            return axios.delete('/api/eve/characters/' + character_id)
+            return axios.delete('/api/eve/eve_characters/' + character_id)
             .then((res) => {
                 return this.loadCharacters();
             })
@@ -183,6 +183,9 @@ export default {
         },
 
         activateCharacter(char) {
+            if (this.deleting_character) {
+                return;
+            }
             axios.post('/api/eve/active_character', {
                 character_id: char.character_id
             })

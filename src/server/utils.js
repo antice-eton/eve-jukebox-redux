@@ -11,7 +11,8 @@ function get_orm() {
             pool: {
                 max: 1,
                 min: 0
-            }
+            },
+            logging: false
         });
     }
 

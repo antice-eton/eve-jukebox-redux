@@ -13,6 +13,8 @@ const axios = require('axios');
 
 const asyncMiddleware = require('../routeUtils.js').asyncMiddleware;
 
+const eveClient = require('../../lib/eveClient.js');
+
 async function eve_sso_callback(accessToken, refreshToken, profile, done) {
 
     console.log('[ESC] EVE SSO Callback');
@@ -79,14 +81,87 @@ apiRoutes.get('/api/eve/verify',
     }
 );
 
+apiRoutes.get('/api/eve/eve_characters/:character_id/location', asyncMiddleware(async(req, res, next) => {
+    const user = await User.findOne({where: {session_id: req.session.id}});
+    const character = await user.getCharacters({where: {character_id: req.params.character_id}});
 
+    if (!character[0]) {
+        res.status(404).send('Char id not found');
+        return;
+    }
 
-apiRoutes.get('/api/eve/proxy/*', (req, res) => {
-    res.send(req.originalUrl);
-});
+    try {
+        const ec = new eveClient(character[0], appConfig);
+        const eveRes = await ec.location();
+
+        const systemData = await ec.systemInfo(eveRes.data.solar_system_id);
+        const sovData = await ec.sovInfo(eveRes.data.solar_system_id);
+
+        systemData['sov'] = sovData;
+        systemData['location'] = eveRes.data;
+
+        if (systemData['sov']['faction_id']) {
+            systemData['faction'] = await ec.factionInfo(systemData['sov']['faction_id']);
+        }
+
+        if (eveRes.data['structure_id']) {
+            systemData['structure'] = {
+                structure_id: eveRes.data['structure_id']
+            };
+        }
+
+        if (eveRes.data['station_id']) {
+            systemData['station'] = await ec.stationInfo(eveRes.data['station_id']);
+        }
+
+        res.set({
+            'expires': eveRes.headers['expires'],
+            'cache-control': eveRes.headers['cache-control'],
+            'last-modified': eveRes.headers['last-modified'],
+            'access-control-max-age': eveRes.headers['access-control-max-age']
+        }).json(systemData);
+
+    } catch (err) {
+        if (err.response) {
+            console.error('[ESC] Error getting character location', err.response);
+        } else {
+            console.error('[ESC] Error getting character location', err);
+        }
+        res.status(500).send('Error getting character location');
+        return;
+    }
+}));
+
+apiRoutes.get('/api/eve/eve_characters/:character_id/status', asyncMiddleware(async (req, res, next) => {
+
+    const user = await User.findOne({where: {session_id: req.session.id}});
+    const character = await user.getCharacters({where: {character_id: req.params.character_id}});
+
+    if (!character[0]) {
+        res.status(404).send('Char id not found');
+        return;
+    }
+
+    try {
+        const ec = new eveClient(character[0], appConfig);
+        const eveRes = await ec.onlineStatus();
+
+        res.set({
+            'expires': eveRes.headers['expires'],
+            'cache-control': eveRes.headers['cache-control'],
+            'last-modified': eveRes.headers['last-modified'],
+            'access-control-max-age': eveRes.headers['access-control-max-age']
+        }).json(eveRes.data);
+
+    } catch (err) {
+        console.error('[ESC] Error getting character status', err.response);
+        res.status(500).send('Error getting character status');
+        return;
+    }
+}));
 
 apiRoutes.get('/api/eve/verify-error', (req, res) => {
-    res.send('Error validating EVE SSO');
+    res.status(500).send('Error validating EVE SSO');
 });
 
 apiRoutes.get('/api/eve/login',
@@ -94,7 +169,7 @@ apiRoutes.get('/api/eve/login',
 );
 
 apiRoutes.get('/api/eve/login-error', (req, res) => {
-    res.send('Error logging in via EVE SSO');
+    res.status(500).send('Error logging in via EVE SSO');
 });
 
 apiRoutes.get('/api/eve/characters', asyncMiddleware(async (req, res, next) => {
