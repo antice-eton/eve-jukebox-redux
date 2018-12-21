@@ -1,40 +1,31 @@
 import Vue from 'vue';
 import Router from 'vue-router';
 import Main from './views/Main.vue';
-import Login from './views/Login.vue';
-import Settings from './views/Settings.vue';
-
+import EveCharacterManagement from './views/EveCharacterManagement.vue';
+import ConfigurePlaylist from './views/ConfigurePlaylist.vue';
 Vue.use(Router);
 
 export default new Router({
   routes: [
     {
-      path: '/',
-      name: 'home',
-      component: Main,
+        path: '/',
+        name: 'home',
+        component: Main,
     },
     {
-      path: '/login',
-      name: 'login',
-      component: Login
+        path: '/eve-character-management',
+        name: 'eve-character-management',
+        component: () => import(/* webpackChunkName: "eve-character-management" */ './views/EveCharacterManagement.vue')
     },
     {
-        path: '/settings',
-        name: 'settings',
-        component: Settings
+        path: '/music-sources',
+        name: 'music-sources',
+        component: () => import(/* webpackChunkName: "music-sources" */ './views/MusicSources.vue')
     },
     {
-      path: '/spotify',
-      name: 'spotify',
-      // route level code-splitting
-      // this generates a separate chunk (about.[hash].js) for this route
-      // which is lazy-loaded when the route is visited.
-      component: () => import(/* webpackChunkName: "spotify" */ './views/Spotify.vue'),
-    },
-    {
-        path: '/eve',
-        name: 'eve',
-        component: () => import(/* webpackChunkName: "eve" */ './views/Eve.vue')
+        path: '/playlists',
+        name: 'playlists',
+        component: ConfigurePlaylist
     }
   ],
 });

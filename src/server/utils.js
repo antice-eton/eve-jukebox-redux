@@ -3,15 +3,39 @@ const axios = require('axios');
 const Sequelize = require('sequelize');
 const express = require('express');
 const mkdirp = require('mkdirp');
+const winston = require('winston');
+
+var logger;
+function get_logger() {
+    if (!logger) {
+        logger = winston.createLogger({
+            level: 'debug',
+            format: winston.format.combine(
+                winston.format.timestamp({
+                    format: 'YYYY-MM-DD HH:mm:ss'
+                }),
+                winston.format.json()
+            ),
+            transports: [
+                new winston.transports.Console({
+                    format: winston.format.combine(
+                        winston.format.colorize(),
+                        winston.format.printf(
+                            info => `${info.timestamp} ${info.level}: ${info.message}`
+                        )
+                    )
+                })
+            ]
+        });
+    }
+
+    return logger;
+}
 
 var orm;
 function get_orm() {
     if (!orm) {
-        orm = new Sequelize('sqlite:ejr.db', {
-            pool: {
-                max: 1,
-                min: 0
-            },
+        orm = new Sequelize('postgresql://postgres:postgres@localhost:5432/eve-jukebox-redux', {
             logging: false
         });
     }
@@ -99,5 +123,6 @@ async function eve_sso_callback(accessToken, refreshToken, profile, done) {
 
 module.exports = {
     get_orm: get_orm,
-    get_app: get_app
+    get_app: get_app,
+    get_logger: get_logger
 }

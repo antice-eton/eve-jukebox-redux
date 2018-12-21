@@ -1,16 +1,16 @@
 const express = require('express');
 const apiRoutes = express.Router();
 const passport = require('passport');
-const appConfig = require('../../config.js');
+const appConfig = require('../../../config.js');
 
-const models = require('../../models.js');
+const models = require('../../../models.js');
 const User = models.User;
 const Character = models.Character;
 const MusicSource = models.MusicSource;
 
 const asyncMiddleware = require('../routeUtils.js').asyncMiddleware;
 
-const plugins = require('../../../plugins/music_sources/ejr-plugins-api.js');
+const plugins = require('../../../../plugins/music_sources/ejr-plugins-api.js');
 
 apiRoutes.get('/api/music_sources/available', asyncMiddleware(async (req, res, next) => {
     res.json({
@@ -26,6 +26,45 @@ apiRoutes.get('/api/music_sources/linked', asyncMiddleware(async (req, res, next
     res.json({
         musicSources: musicSources
     });
+}));
+
+apiRoutes.get('/api/music_sources/active', asyncMiddleware(async (req, res, next) => {
+    const user = await User.findOne({ where: { session_id: req.session.id }});
+
+    res.json({
+        active_musicsource_id: user.active_musicsource_id
+    });
+}));
+
+apiRoutes.post('/api/music_sources/linked/:source_id/activate', asyncMiddleware(async (req, res, next) => {
+    const user = await User.findOne({ where: { session_id: req.session.id }});
+    const musicSource = await user.getMusicSources({ where: { id: req.params.source_id }});
+
+    if (!musicSource[0]) {
+        res.status(404).send('Music source not found');
+        return;
+    }
+
+    user.active_musicsource_id = musicSource[0].id;
+
+    await user.save();
+    res.send('ok');
+}));
+
+apiRoutes.get('/api/music_sources/linked/:source_id/status', asyncMiddleware(async (req, res, next) => {
+    const user = await User.findOne({ where: { session_id: req.session.id }});
+    const musicSource = await user.getMusicSources({ where: { id: req.params.source_id }});
+
+    if (!musicSource[0]) {
+        res.status(404).send('Music source not found');
+        return;
+    }
+
+    const model = new plugins[musicSource[0].model_name].model(musicSource[0], appConfig);
+
+    const status = await model.status();
+
+    res.json({status: status});
 }));
 
 apiRoutes.get('/api/music_sources/linked/:source_id/playlists', asyncMiddleware(async (req, res, next) => {
@@ -52,9 +91,13 @@ apiRoutes.delete('/api/music_sources/linked/:source_id', asyncMiddleware(async (
     const user = await User.findOne({where: {session_id: req.session.id}});
     const musicSource = await user.getMusicSources({where: {id: req.params.source_id}});
 
-    console.log('music sources:', musicSource);
+    if (user.active_musicsource_id === musicSource.id) {
+        user.active_musicsource_id = null;
+        await user.save();
+    }
 
     await musicSource[0].destroy();
+
 
     res.send('ok');
 }));

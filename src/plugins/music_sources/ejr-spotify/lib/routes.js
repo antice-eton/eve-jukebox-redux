@@ -6,7 +6,11 @@ const passport = require('passport');
 const User = require('../../../../server/models.js').User;
 const MusicSource = require('../../../../server/models.js').MusicSource;
 
-const asyncMiddleware = require('../../../../server/routes/routeUtils.js').asyncMiddleware;
+const asyncMiddleware = require('../../../../server/lib/routes/routeUtils.js').asyncMiddleware;
+
+apiRoutes.get('/api/ms/spotify/status', asyncMiddleware(async (req, res, next) => {
+    const user = await User.findOne({where: {session_id: req.session.id}});
+}));
 
 apiRoutes.get('/api/ms/spotify/verify',
     passport.authenticate('spotify', {failureRedirect: '/api/ms/spotify/verify-error', session: false}),

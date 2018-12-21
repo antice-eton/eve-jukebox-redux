@@ -1,83 +1,82 @@
 <template>
-    <v-app id="ejr" dark>
-        <Toolbar />
-        <LeftDrawer />
-        <RouterView />
-    </v-app>
+<v-app id="ejr" dark>
+    <router-view/>
+    <!--
+    <v-content>
+        <v-container>
+            <v-layout wrap>
+                <v-flex xs12>
+                    <h1 class="mb-1 display-1">EVE Jukebox Redux</h1>
+                </v-flex>
+                <v-flex xs12>
+                    <v-card raised dark>
+                        <v-card-title class="grey darken-4">Active Character</v-card-title>
+                        <v-card-text>
+                            <v-layout wrap>
+                                <v-flex xs6>
+                                    <v-layout wrap>
+                                        <v-flex xs3>
+                                            <v-avatar size="100">
+                                                <img :src="active_character_portrait">
+                                            </v-avatar>
+                                        </v-flex>
+                                        <v-flex class="ml-3">
+                                            <h4 class="text-uppercase font-weight-black text--darken-2">
+                                                Active Character
+                                            </h4>
+                                            <p>
+                                                {{ active_character_name }}
+                                                <v-list class="ma-0 pa-0">
+                                                    <v-list-tile @click="" class="ma-0 pa-0">
+                                                        <v-list-tile-content class="caption ma-0 pa-0">
+                                                            ZKillBoard
+                                                        </v-list-tile-content>
+                                                    </v-list-tile>
+                                                </v-list>
+                                            </p>
+
+                                            <h4 class="text-uppercase font-weight-black">
+                                                Status
+                                            </h4>
+                                            <p>
+                                                OFFLINE
+                                            </p>
+                                        </v-flex>
+                                    </v-layout>
+                                </v-flex>
+                                <v-flex xs6>
+                                    <h1>Status:</h1>
+                                    <p>Who knows</p>
+                                </v-flex>
+                            </v-layout>
+                        </v-card-text>
+                        <v-card-actions class="grey darken-4">
+                            <v-btn @click="$router.push('/eve-character-management')"><v-icon class="mr-2">settings</v-icon> Manage Characters</v-btn>
+                        </v-card-actions>
+                    </v-card>
+                </v-flex>
+            </v-layout>
+        </v-container>
+    </v-content>
+    <Toolbar />
+    <LeftDrawer />
+    <RouterView />
+-->
+</v-app>
 </template>
 
 <style lang="scss">
-.spotify-icon {
-    width: 2em;
-    height: 2em;
-    vertical-align: middle;
-}
-
-.eve-icon {
-    width: 2em;
-    height: 2em;
-    vertical-align: middle;
-}
-
 @import './sass/fonts.scss';
-
 </style>
 <script>
 import axios from 'axios';
-import Main from './views/Main.vue';
+//import Main from './views/Main.vue';
 
-import Toolbar from './components/AppToolbar.vue';
-import LeftDrawer from './components/LeftDrawer.vue';
+//import Toolbar from './components/AppToolbar.vue';
+//import LeftDrawer from './components/LeftDrawer.vue';
 
 export default {
     name: 'App',
-    components: {
-        Main,
-        Toolbar,
-        LeftDrawer
-    },
-    data () {
-        return {
-            loading: true,
-            drawer: true
-        }
-    },
-
-    computed: {
-        spotify_icon() {
-            return require('./assets/spotify-enabled.svg');
-        },
-
-        eve_icon() {
-            return require('./assets/eve-logo.png');
-        },
-
-        character_id() {
-            return this.$store.state.active_character_id;
-        },
-
-        character_name() {
-            return this.$store.state.active_character_name;
-        },
-
-        character_portrait() {
-            return '/portraits/' + this.character_id + '_512.jpg';
-        },
-
-        characters() {
-            return this.$store.state.characters;
-        }
-    },
-
-    watch: {
-        character_id(newVal) {
-            if (newVal) {
-                this.drawer = true;
-            } else {
-                this.drawer = false;
-            }
-        }
-    },
 
     created() {
         axios.get('/api/session/status')
@@ -94,7 +93,7 @@ export default {
         .catch((err) => {
             this.loading = false;
             console.error(err.response);
-            this.$router.push('/login');
+            this.$router.push('/eve-character-management');
         });
     }
 }

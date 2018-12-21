@@ -21,11 +21,11 @@
               </div>
               <v-list v-else-if="musicSources.length > 0">
                 <v-list-tile v-for="source in musicSources" :key="source.id">
-                  <v-list-tile-content @click="getPlaylists(source.id)">
+                  <v-list-tile-content @click="activateMusicSource(source.id)">
                     {{ source.service_name }}
                   </v-list-tile-content>
                   <v-list-tile-action>
-                      <v-btn icon ripple v-if="deleting_music_source !== source.id">
+                      <v-btn icon ripple v-if="processing_source !== source.id">
                           <v-icon @click="deleteSource(source.id)">delete</v-icon>
                       </v-btn>
                       <v-progress-circular
@@ -115,6 +115,7 @@ export default {
 
     data() {
         return {
+            processing_source: false,
             loading_sources: false,
             deleting_music_source: null,
             addMusicSource: 0,
@@ -157,11 +158,19 @@ export default {
         },
 
         deleteSource(sourceId) {
-            this.deleting_music_source = sourceId;
+            this.processing_source = sourceId;
             axios.delete('/api/music_sources/linked/' + sourceId)
             .then(() => {
-                this.deleting_music_source = null;
+                this.processing_source = null;
                 this.refreshSources();
+            });
+        },
+
+        activateMusicSource(sourceId) {
+            this.processing_source = true;
+            axios.post('/api/music_sources/linked/' + sourceId + '/activate')
+            .then(() => {
+                this.$router.push('/');
             });
         },
 

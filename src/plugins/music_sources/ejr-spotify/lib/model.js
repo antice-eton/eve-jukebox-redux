@@ -73,6 +73,22 @@ class SpotifyModel {
             });
         });
     }
+
+    async status() {
+        const res = await this._req({
+            url: '/v1/me/player/devices'
+        });
+
+        console.log('spotify devices headers:', res.headers);
+
+        if (res.data.devices.length === 0) {
+            return false;
+        } else if (res.data.devices.filter((device) => device.is_active).length === 0) {
+            return false;
+        } else {
+            return true;
+        }
+    }
 }
 
 module.exports = SpotifyModel;

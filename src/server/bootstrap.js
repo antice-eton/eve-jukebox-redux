@@ -1,4 +1,27 @@
+const get_logger = require('./utils.js').get_logger;
+
 module.exports = async function() {
+
+    const bootstrapStartTime = Date.now();
+
+    // pre bootstrap stuff
+
+    const logger = get_logger();
+    logger.info('BOOTSTRAP');
+
+    const bootstrapApp = require('./lib/bootstrap/app.js');
+    const bootstrapEve = require('./lib/bootstrap/eve.js');
+    const bootstrapSde = require('./lib/bootstrap/sde.js');
+    const bootstrapMs  = require('./lib/bootstrap/musicSources.js');
+
+    await bootstrapApp();
+    await bootstrapMs();
+    await bootstrapSde();
+    await bootstrapEve();
+
+
+
+/*
 
     const appConfig = require('./config.js');
     const __reset = false; // Set true to delete any preexisting data
@@ -9,13 +32,16 @@ module.exports = async function() {
     const models = require('./models.js');
     const orm = get_orm();
 
-    orm.sync({ force: __reset });
+    logger.info('---- START DATABASE SETUP');
+    await orm.sync({ force: __reset });
+    logger.info('---- DATABASE SETUP COMPLETE');
 
     const musicSources = require('../plugins/music_sources/ejr-plugins-api.js');
 
 
 
     // Setup app
+    logger.info('---- SETUP APPLICATION');
     const app = get_app();
     // Setup session
     const Session = require('express-session');
@@ -24,6 +50,14 @@ module.exports = async function() {
         db: get_orm()
     });
     await sessionStore.sync({ force:  __reset});
+
+    const bootstrap_sde = require('./lib/bootstrap/sde.js');
+    await bootstrap_sde.prepare_sde();
+
+    const expressWs = require('express-ws')(app);
+    const wsClient = require('./lib/wsClient.js');
+
+    app.ws('/live', wsClient.connect.bind(null, sessionStore));
 
     const session = Session({
         secret: 'saucy-fucker',
@@ -37,6 +71,8 @@ module.exports = async function() {
     app.use(bodyParser.json());
 
     Object.keys(musicSources).forEach((musicSourceName) => {
+
+        logger.info('---- SETUP MUSIC SOURCE:', musicSourceName);
 
         const musicSource = musicSources[musicSourceName];
 
@@ -59,7 +95,7 @@ module.exports = async function() {
 
     const eve_sso_callback = require('./routes/ejr/eve.js').eve_sso_callback;
 
-/*
+
     passport.serializeUser(function(user, done) {
         console.log('[ESC] Serialize user: ', user.CharacterName);
         done(null, user);
@@ -69,7 +105,7 @@ module.exports = async function() {
         console.log('[ESC] Deserialize user:', obj);
         done(null, obj);
     });
-*/
+
 
     passport.use(new EveOnlineStrategy({
         clientID: appConfig.eve.clientId,
@@ -80,4 +116,17 @@ module.exports = async function() {
 
     app.use(passport.initialize());
     // app.use(passport.session());
+    logger.info('---- APPLICATION SETUP COMPLETE');
+    */
+
+    const bootstrapEndTime = Date.now();
+
+    const bootstrapTotal = (bootstrapEndTime - bootstrapStartTime) / 1000;
+
+    const bsh = Math.floor(bootstrapTotal / 3600);
+    const bsm = Math.floor(bootstrapTotal % 3600 / 60);
+    const bss = Math.floor(bootstrapTotal % 3600 % 60);
+
+    logger.info('Bootstrap time: ' + ('0' + bsh).slice(-2) + ':' + ('0' + bsm).slice(-2) + ':' + ('0' + bss).slice(-2));
+
 }

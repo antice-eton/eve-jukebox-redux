@@ -15,7 +15,7 @@
 
                     <v-card-text v-else>
                         <p v-if="characters.length === 0">
-                            You have no EVE Online characters registered.
+                            You have no EVE Online characters registered!!
                         </p>
                         <v-list two-line v-else>
                             <v-subheader>Characters</v-subheader>

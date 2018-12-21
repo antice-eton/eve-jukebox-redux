@@ -1,9 +1,9 @@
 const express = require('express');
 const apiRoutes = express.Router();
 const passport = require('passport');
-const appConfig = require('../../config.js');
+const appConfig = require('../../../config.js');
 
-const models = require('../../models.js');
+const models = require('../../../models.js');
 const User = models.User;
 const Character = models.Character;
 
@@ -11,9 +11,11 @@ const fs = require('fs');
 const mkdirp = require('mkdirp');
 const axios = require('axios');
 
+const Seq = require('sequelize');
+
 const asyncMiddleware = require('../routeUtils.js').asyncMiddleware;
 
-const eveClient = require('../../lib/eveClient.js');
+const sessionState = require('../../ws/sessionState.js').get_state;
 
 async function eve_sso_callback(accessToken, refreshToken, profile, done) {
 
@@ -57,6 +59,30 @@ async function eve_sso_callback(accessToken, refreshToken, profile, done) {
     return done(null, profile);
 }
 
+apiRoutes.get('/api/eve/systems', asyncMiddleware(async (req, res, next) => {
+
+    if (req.query['q']) {
+
+        const systems = await models.EveSystem.findAll({
+            where: {
+                name: {
+                    [Seq.Op.iLike]: req.query['q'] + '%'
+                }
+            }
+        });
+
+        res.json({
+            systems: systems
+        });
+    } else {
+        const systems = await models.EveSystem.findAll();
+
+        res.json({
+            systems: systems
+        });
+    }
+}));
+
 apiRoutes.get('/api/eve/verify',
     passport.authenticate('eveonline-sso', {failureRedirect: '/api/eve/verify-error', session: false}),
     async function(req, res) {
@@ -91,7 +117,7 @@ apiRoutes.get('/api/eve/eve_characters/:character_id/location', asyncMiddleware(
     }
 
     try {
-        const ec = new eveClient(character[0], appConfig);
+        const ec = new eveClient(character[0], appConfig['eve']);
         const eveRes = await ec.location();
 
         const systemData = await ec.systemInfo(eveRes.data.solar_system_id);
@@ -143,7 +169,7 @@ apiRoutes.get('/api/eve/eve_characters/:character_id/status', asyncMiddleware(as
     }
 
     try {
-        const ec = new eveClient(character[0], appConfig);
+        const ec = new eveClient(character[0], appConfig['eve']);
         const eveRes = await ec.onlineStatus();
 
         res.set({
@@ -214,25 +240,35 @@ apiRoutes.delete('/api/eve/eve_characters/:character_id', asyncMiddleware(async 
 
 }));
 
-apiRoutes.post('/api/eve/active_character', (req, res) => {
+apiRoutes.post('/api/eve/active_character', asyncMiddleware(async(req, res, next) => {
     if (!req.body.character_id) {
         throw new Error('Missing character_id');
     }
 
-    req.session.active_character_id = req.body.character_id;
-    res.send('ok');
-});
+    const user = await User.findOne({ where: { session_id: req.session.id }});
+    user.active_character_id = req.body.character_id;
+    await user.save();
 
-apiRoutes.delete('/api/eve/active_character', (req, res) => {
-    req.session.active_character_id = null;
+    req.session.active_character_id = req.body.character_id;
+    sessionState(req.session.id).active_character_id = req.session.active_character_id;
     res.send('ok');
-});
+}));
+
+apiRoutes.delete('/api/eve/active_character', asyncMiddleware(async (req, res, next) => {
+    const user = await User.findOne({ where: { session_id: req.session.id }});
+    user.active_character_id = null;
+    req.session.active_character_id = null;
+    serverState(req.session.id).active_charactrer_id = null;
+    // wsClient.unsetActiveCharacterId(req.session.id);
+    res.send('ok');
+}));
 
 apiRoutes.get('/api/eve/active_character', asyncMiddleware(async (req, res, next) => {
 
     if (req.session.active_character_id) {
 
         const char_id = req.session.active_character_id;
+        // wsClient.setActiveCharacterId(req.session.id, char_id);
 
         const user = await User.findOne({where: {session_id: req.session.id}});
         const characters = await user.getCharacters({where: {character_id: char_id}});
@@ -241,6 +277,7 @@ apiRoutes.get('/api/eve/active_character', asyncMiddleware(async (req, res, next
             res.status(404).send('No active characters');
         } else {
             const char = characters[0];
+            sessionState(req.session.id).active_character_id = char.character_id;
             res.json({
                 character_id: char.character_id,
                 character_name: char.character_name,

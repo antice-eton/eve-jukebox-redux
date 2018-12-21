@@ -5,7 +5,7 @@ const axios = require('axios');
 const User = require('../../../../server/models.js').User;
 const MusicSource = require('../../../../server/models.js').MusicSource;
 
-const asyncMiddleware = require('../../../../server/routes/routeUtils.js').asyncMiddleware;
+const asyncMiddleware = require('../../../../server/lib/routes/routeUtils.js').asyncMiddleware;
 
 apiRoutes.post('/api/ms/foobar/install', asyncMiddleware(async (req, res, next) => {
     const user = await User.findOne({where: { session_id: req.session.id }});

@@ -3,30 +3,62 @@ const orm = require('./utils.js').get_orm();
 
 // Defines an application user
 var User = orm.define('user', {
-    session_id: Seq.STRING
+    session_id: Seq.STRING,
+    active_character_id: Seq.INTEGER,
+    active_musicsource_id: Seq.INTEGER
+},{
+    indexes: [{
+        unique: true,
+        fields: ['session_id']
+    }]
 });
 
 // Defines an eve character including oauth tokens
 var Character = orm.define('character', {
-    character_id: Seq.STRING,
+    character_id: Seq.INTEGER,
     character_name: Seq.STRING,
-    access_token: Seq.STRING,
-    refresh_token: Seq.STRING,
+    access_token: Seq.TEXT,
+    refresh_token: Seq.TEXT,
     expires_on: Seq.DATE,
-    token_created: Seq.DATE
+    token_created: Seq.DATE,
+    description: Seq.TEXT
+},{
+    indexes: [{
+        unique: true,
+        fields: ['character_id']
+    },{
+        unique: true,
+        fields: ['character_name']
+    },{
+        unique: true,
+        fields: ['access_token']
+    },{
+        unique: true,
+        fields: ['refresh_token']
+    }]
 });
 
 // User has many characters
 User.hasMany(Character);
 Character.belongsTo(User);
 
+var EveName = orm.define('eveName', {
+    groupID: Seq.INTEGER,
+    itemID: Seq.INTEGER,
+    itemName: Seq.STRING
+},{
+    indexes: [{
+        unique: true,
+        fields: ['itemID']
+    }]
+});
+
 var MusicSource = orm.define('musicSource', {
     model_name: Seq.STRING,
-    service_id: Seq.INTEGER,
+    service_id: Seq.STRING,
     service_name: Seq.STRING,
     service_displayName: Seq.STRING,
     configuration: Seq.JSON
-
 });
 User.hasMany(MusicSource);
 MusicSource.belongsTo(User);
@@ -34,25 +66,35 @@ MusicSource.belongsTo(User);
 var EveRegion = orm.define('region', {
     name: Seq.STRING,
     description: Seq.TEXT,
-    region_id: Seq.INTEGER
+    region_id: {
+        type: Seq.INTEGER,
+        primaryKey: true
+    }
 });
 
 var EveConstellation = orm.define('constellation', {
-    constellation_id: Seq.INTEGER,
+    constellation_id: {
+        type: Seq.INTEGER,
+        primaryKey: true
+    },
     name: Seq.STRING,
 });
-EveRegion.hasMany(EveConstellation);
-EveConstellation.belongsTo(EveRegion);
+EveRegion.hasMany(EveConstellation, {foreignKey: 'fk_region_id', sourceKey: 'region_id'});
+EveConstellation.belongsTo(EveRegion, {foreignKey: 'fk_region_id', targetKey: 'region_id'});
 
 var EveSystem = orm.define('system', {
+    system_id: {
+        type: Seq.INTEGER,
+        primaryKey: true
+    },
     security_status: Seq.FLOAT,
     security_class: Seq.STRING,
-    system_id: Seq.INTEGER,
+    constellation_id: Seq.INTEGER,
     star_id: Seq.INTEGER,
-    name: Seq.STRING
+    name: Seq.STRING,
 });
-EveConstellation.hasMany(EveSystem);
-EveSystem.belongsTo(EveConstellation);
+EveConstellation.hasMany(EveSystem, {foreignKey: 'fk_constellation_id', sourceKey: 'constellation_id'});
+EveSystem.belongsTo(EveConstellation, {foreignKey: 'fk_constellation_id', targetKey: 'constellation_id'});
 
 EveSovereignty = orm.define('sovereignty', {
     faction_id: Seq.INTEGER,
@@ -63,10 +105,10 @@ EveSovereignty = orm.define('sovereignty', {
 
 EveFaction = orm.define('faction', {
     corporation_id: Seq.INTEGER,
-    description: Seq.STRING,
+    description: Seq.TEXT,
     militia_corporation_id: Seq.INTEGER,
     faction_id: Seq.INTEGER,
-    name: Seq.STRING
+    name: Seq.STRING,
 });
 
 EveAlliance = orm.define('alliance', {
@@ -91,7 +133,10 @@ EveStation = orm.define('station', {
     type_id: Seq.INTEGER,
     name: Seq.STRING,
     race_id: Seq.INTEGER,
-    owner: Seq.INTEGER
+    owner: Seq.INTEGER,
+    constellation_id: Seq.INTEGER,
+    region_id: Seq.INTEGER,
+    system_id: Seq.INTEGER
 });
 
 const models = {
@@ -105,7 +150,8 @@ const models = {
     EveFaction,
     EveAlliance,
     EveCorporation,
-    EveStation
+    EveStation,
+    EveName
 };
 
 for (let model of Object.keys(models)) {

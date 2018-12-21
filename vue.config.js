@@ -15,6 +15,10 @@ module.exports = {
         proxy: {
             "/api": {
                 target: "http://localhost:8888"
+            },
+            "/live": {
+                target: "http://localhost:8888",
+                ws: true
             }
         }
     },
