@@ -48,7 +48,9 @@
                         <v-icon small>bubble_chart</v-icon> Region:
                     </v-flex>
                     <v-flex xs9>
-                        {{ location.region.name }}
+                        <span v-if="location.region">
+                            {{ location.region.name }}
+                        </span>
                     </v-flex>
                     <v-flex xs3>
                         <v-icon small>save_alt</v-icon> Docked:
@@ -70,14 +72,31 @@
         </v-layout>
     </v-card-text>
     <v-card-actions class="grey darken-4">
-        <v-btn @click="$router.push('/eve-character-management')"><v-icon class="mr-2">settings</v-icon> Manage Characters</v-btn>
+        <v-btn @click="manage_characters = true"><v-icon class="mr-2">settings</v-icon> Manage Characters</v-btn>
     </v-card-actions>
+    <v-dialog v-model="manage_characters" max-width="500">
+        <EveCharactersCard @active-character="manage_characters = false"/>
+    </v-dialog>
 </v-card>
 </template>
 
 <script>
 
+import EveCharactersCard from './EveCharacters.vue';
+import _ from 'lodash';
+
 export default {
+
+    components: {
+        EveCharactersCard
+    },
+
+    data() {
+        return {
+            manage_characters: false
+        }
+    },
+
     computed: {
         character_id() {
             return this.$store.state.active_character_id;

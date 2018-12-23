@@ -28,8 +28,9 @@ async function active_character(sessionId) {
         }
     }
 
-    if (!state.active_character || state.active_character_id !== state.active_character.character_id) {
+    if (!state.active_character || state.active_character_id !== state.active_character['character_id']) {
         logger.debug('Getting new character instance setup for session:' + sessionId);
+        logger.debug('char id:' + state.active_character_id + ' -- assumed char id:' + state.active_character);
 
         const user = state.user;
         const character = await user.getCharacters({
@@ -39,9 +40,10 @@ async function active_character(sessionId) {
         });
 
         if (!character[0]) {
-            throw "What the server thinks is the active character id for this session is not aligned with what is in the database";
+            throw new Error("What the server thinks is the active character id for this session is not aligned with what is in the database");
         }
         state.active_character = character[0];
+        state.active_character_id = character[0].character_id;
         state.status_client = new EveStatusClient(state.active_character, appConfig['eve']);
         state.universe_client = new EveUniverseClient(state.active_character, appConfig['eve']);
 
@@ -59,43 +61,29 @@ async function active_character(sessionId) {
     return state.active_character;
 }
 
-async function get_status_data(sessionId, methodName) {
-
+async function get_universe_client(sessionId) {
+    await active_character(sessionId);
     const state = getSessionData(sessionId);
-    const statusClient = state.status_client;
+    return state.universe_client;
+}
 
-    if (state.cached_data[methodName]) {
-        if (Date.now() > (state.cached_data[methodName].expires + 2000)) {
-            const res = await statusClient[methodName]();
-            const expiresDate = new Date(res.headers['expires']);
-
-            state.cached_data[methodName] = {
-                data: res.data,
-                expires: expiresDate.getTime()
-            };
-        }
-    } else {
-        const res = await statusClient[methodName]();
-        const expiresDate = new Date(res.headers['expires']);
-        state.cached_data[methodName] = {
-            data: res.data,
-            expires: expiresDate.getTime()
-        };
-    }
-
-    return state.cached_data[methodName].data;
+async function get_status_client(sessionId) {
+    await active_character(sessionId);
+    const state = getSessionData(sessionId);
+    return state.status_client;
 }
 
 async function report_location(sessionId) {
-    const character = await active_character(sessionId);
-    if (!character) { return; }
-
     const state = getSessionData(sessionId);
-    const ws = state.ws_client;
-    const universeClient = state.universe_client;
-    const statusClient = state.status_client;
+    const statusClient = await get_status_client(sessionId);
+    const universeClient = await get_universe_client(sessionId);
+    if (!universeClient || !statusClient) {
+        logger.warn('Requesting EVE location but no clients are setup yet');
+        return;
+    }
 
-    const locationData = await get_status_data(sessionId, 'location');
+    const ws = state.ws_client;
+    const locationData = await statusClient.location();
 
     if (JSON.stringify(locationData) !== JSON.stringify(state.previous_tick_data['location'])) {
 
@@ -143,14 +131,16 @@ async function report_location(sessionId) {
 }
 
 async function report_online_status(sessionId) {
-    const character = await active_character(sessionId);
-    if (!character) { return; }
-    
     const state = getSessionData(sessionId);
     const ws = state.ws_client;
-    const statusClient = state.status_client;
+    const statusClient = await get_status_client(sessionId);
 
-    const onlineData = await get_status_data(sessionId, 'online');
+    if (!statusClient) {
+        logger.warn('Tried to get EVE character online status but no status client was available');
+        return;
+    }
+
+    const onlineData = await statusClient.online();
 
     if (onlineData.online !== _.get(state.previous_tick_data, 'online.online')) {
         ws.send(JSON.stringify({

@@ -1,13 +1,17 @@
 const axios = require('axios');
 const qs = require('qs');
 const logger = require('../../utils.js').get_logger();
+const crypto = require('crypto');
 
 const EJR_AGENT_NAME = 'EVE Jukebox Redux v1.0.0-ALPHA';
+
+
 
 class EveClient {
     constructor(character, config) {
         this.character = character;
         this.config = config;
+        this.cache = {};
     }
 
     async request(options, retry) {
@@ -16,7 +20,7 @@ class EveClient {
 
         newOptions['url'] = this.config['apiUrl'] + options['url'];
 
-        logger.debug('EVE Request: ' + newOptions['url']);
+
 
         if (!newOptions['headers']) {
             newOptions['headers'] = {}
@@ -25,7 +29,26 @@ class EveClient {
         newOptions['headers']['Authorization'] = 'Bearer ' + this.character.access_token;
         newOptions['headers']['User-Agent'] = EJR_AGENT_NAME;
 
+        const cacheKey = crypto.createHash('sha1').update(JSON.stringify(newOptions)).digest('hex');
+
+        //console.log('cache key:', cacheKey);
+
+        if (this.cache[cacheKey] && Date.now() <= this.cache[cacheKey]['expires'] + 1500) {
+            return this.cache[cacheKey].data;
+        } else {
+            delete this.cache[cacheKey];
+        }
+
+        // logger.debug('EVE Request: ' + newOptions['url']);
         return axios(newOptions)
+        .then((res) => {
+            const expires = new Date(res.headers.expires);
+            this.cache[cacheKey] = {
+                expires: expires.getTime(),
+                data: res.data
+            };
+            return res.data;
+        })
         .catch(async (err) => {
             if (err.response && err.response.status === 403) {
                 if (retry === false) {

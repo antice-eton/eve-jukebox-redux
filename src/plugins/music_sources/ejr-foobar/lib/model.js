@@ -1,4 +1,5 @@
 const axios = require('axios');
+const logger = require('../../../../server/utils.js').get_logger();
 
 class FoobarModel {
     constructor(source, appConfig) {
@@ -23,9 +24,12 @@ class FoobarModel {
 
         return axios(newOptions)
         .catch((err) => {
-            console.log('[ESC] Error talking to Foobar');
-            console.log(err.response);
-            throw err;
+            if (err.response) {
+                logger.warn('Foobar API Error');
+                console.error(err.response);
+            } else {
+                logger.warn('Foobar unreachable');
+            }
         });
     }
 
@@ -36,11 +40,86 @@ class FoobarModel {
         .then((res) => {
             return res.data.playlists.map((item) => {
                 return {
+                    id: item.id,
                     name: item.title,
-                    total_track: item.itemCount,
-                    playlist_uri: item.id
+                    itemCount: item.itemCount
                 }
             });
+        });
+    }
+
+    async playlist(playlistId) {
+
+        const playlists = await this.playlists();
+        const playlist = playlists.filter((pls) => pls.id === playlistId);
+        return playlist[0];
+    }
+
+    async playlistItems(playlistId) {
+        const playlist = await this.playlist(playlistId);
+
+        const columns = "%artist%,%album%,%title%,%length%";
+
+        return this._req({
+            url: '/api/playlists/' + playlist.id + '/items/0:' + playlist.itemCount + '?columns=' + encodeURI(columns)
+        })
+        .then((res) => {
+            return res.data.playlistItems.items.map((item, idx) => {
+                return {
+                    item_id: idx,
+                    item_name: item.columns[2],
+                    item_artists: [item.columns[0]],
+                    item_length: item.columns[3],
+                    item_album: item.columns[1]
+                }
+            });
+        });
+    }
+
+    async playlistItem(playlistId, itemId) {
+        const playlistItems = await this.playlistItems(playlistId);
+        const playlistItem = playlistItems.filter((item) => item.item_id === itemId);
+        return playlistItem[0];
+    }
+
+    async status() {
+
+        return this._req({
+            url: '/api/player'
+        })
+        .then((res) => {
+            if (!res) {
+                return false;
+            } else {
+                return true;
+            }
+        })
+        .catch((err) => {
+            return false;
+        });
+    }
+
+    async nowPlaying() {
+        return this._req({
+            url: '/api/player'
+        })
+        .then(async (res) => {
+
+            if (!res) {
+                return;
+            }
+
+            const activeItem = res.data['player']['activeItem'];
+
+            if (activeItem['index'] === -1) {
+                return {
+                    playing: false
+                };
+            }
+
+            const playlistItem = await this.playlistItem(activeItem['playlistId'], activeItem['index']);
+            playlistItem['playing'] = true;
+            return playlistItem;
         });
     }
 }

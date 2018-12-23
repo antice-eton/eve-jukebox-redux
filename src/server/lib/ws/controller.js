@@ -5,10 +5,15 @@ const models = require('../../models.js');
 
 const eveFuncs = require('./eve.js');
 
+const msFuncs = require('./musicSource.js');
+
 function startSubscription(sessionId) {
     const state = getSessionData(sessionId);
 
     if (!state.timer) {
+        state.timer = setInterval(tickWrapper.bind(null, sessionId), 1000);
+    } else {
+        clearInterval(state.timer);
         state.timer = setInterval(tickWrapper.bind(null, sessionId), 1000);
     }
     state.tick_counter = 0;
@@ -97,14 +102,17 @@ async function tick(sessionId) {
     }
 
     if (state.tick_counter % 10 === 0) {
-        logger.debug('[WS] Reloading user data');
-        await state.user.reload();
+        // logger.debug('[WS] Reloading user data');
+        // await state.user.reload();
     }
 
     return Promise.all([
         eveFuncs.report_location(sessionId),
-        eveFuncs.report_online_status(sessionId)
+        eveFuncs.report_online_status(sessionId),
+        msFuncs.ms_status(sessionId),
+        msFuncs.ms_nowplaying(sessionId)
     ]);
+
 }
 
 module.exports = {

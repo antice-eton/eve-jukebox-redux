@@ -9,13 +9,42 @@ const Character = models.Character;
 const MusicSource = models.MusicSource;
 
 const asyncMiddleware = require('../routeUtils.js').asyncMiddleware;
-
 const plugins = require('../../../../plugins/music_sources/ejr-plugins-api.js');
+
+const sessionState = require('../../ws/sessionState.js').get_state;
+
+const logger = require('../../../utils.js').get_logger();
+
+const Seq = require('sequelize');
 
 apiRoutes.get('/api/music_sources/available', asyncMiddleware(async (req, res, next) => {
     res.json({
         plugins: Object.keys(plugins)
     });
+}));
+
+apiRoutes.get('/api/music_sources/active', asyncMiddleware(async (req, res, next) => {
+    const user = await User.findOne({ where: { session_id: req.session.id }});
+
+    if (!user.active_musicsource_id) {
+        res.status(404).send('No active music source set');
+        return;
+    }
+
+    const musicSource = await user.getMusicSources({
+        where: {
+            id: user.active_musicsource_id
+        }
+    });
+
+    if (!musicSource[0]) {
+        logger.error('User music source id could not be found');
+        res.status(404).send('Invalid music source id');
+        return;
+    }
+    sessionState(req.session.id).active_musicsource_id = musicSource[0].id;
+
+    res.json(musicSource[0]);
 }));
 
 apiRoutes.get('/api/music_sources/linked', asyncMiddleware(async (req, res, next) => {
@@ -25,14 +54,6 @@ apiRoutes.get('/api/music_sources/linked', asyncMiddleware(async (req, res, next
 
     res.json({
         musicSources: musicSources
-    });
-}));
-
-apiRoutes.get('/api/music_sources/active', asyncMiddleware(async (req, res, next) => {
-    const user = await User.findOne({ where: { session_id: req.session.id }});
-
-    res.json({
-        active_musicsource_id: user.active_musicsource_id
     });
 }));
 
@@ -46,6 +67,10 @@ apiRoutes.post('/api/music_sources/linked/:source_id/activate', asyncMiddleware(
     }
 
     user.active_musicsource_id = musicSource[0].id;
+
+    req.session.active_musicsource_id = musicSource[0].id;
+
+    sessionState(req.session.id).active_musicsource_id = req.session.active_musicsource_id;
 
     await user.save();
     res.send('ok');
@@ -79,9 +104,171 @@ apiRoutes.get('/api/music_sources/linked/:source_id/playlists', asyncMiddleware(
     res.json(playlists);
 }));
 
+apiRoutes.get('/api/music_sources/linked/:source_id/playlists/:playlist_id', asyncMiddleware(async (req, res, next) => {
+    const user = await User.findOne({where: {session_id: req.session.id}});
+    const musicSources = await user.getMusicSources({where: {id: req.params.source_id}});
+    const musicSource = musicSources[0];
+
+    const model = new plugins[musicSource.model_name].model(musicSource, appConfig);
+
+    const playlist = await model.playlist(req.params.playlist_id);
+
+    res.json(playlist);
+}));
+
+apiRoutes.post('/api/music_sources/location_playlist', asyncMiddleware(async (req, res, next) => {
+    const user = await User.findOne({where: {session_id: req.session.id}});
+    const musicSources = await user.getMusicSources({where: {id: user.active_musicsource_id}});
+    const musicSource = musicSources[0];
+
+    if (!musicSource) {
+        res.status(404).send('No active music source');
+        return;
+    }
+
+    /****
+        Lookup priorty
+
+        if (station)
+        else if (sov)
+        else if (faction)
+        else if (system)
+        else if (region)
+        else if (security)
+
+    */
+    const sec = Math.round(req.body.location.system.security_status * 10) / 10;
+    console.log('checking status:', sec);
+    const playlists = await user.getPlaylistCriteria({
+        where: {
+            system_security: sec,
+            source_id: musicSource.id
+        }
+    });
+
+    res.json(playlists[0]);
+
+}));
+
+apiRoutes.post('/api/music_sources/linked/:source_id/playlistCriteria', asyncMiddleware(async (req, res, next) => {
+    const user = await User.findOne({where: {session_id: req.session.id}});
+    const musicSources = await user.getMusicSources({where: {id: req.params.source_id}});
+    const musicSource = musicSources[0];
+
+    if (req.body.system_security) {
+        for (let i = 0; i < req.body.system_security.length; i++) {
+            const sec = req.body.system_security[i];
+
+            var playlistCriteria = await user.getPlaylistCriteria({
+                where: {
+                    system_security: sec,
+                    source_id: musicSource.id
+                }
+            });
+
+            if (playlistCriteria[0]) {
+                playlistCriteria[0].playlist_id = req.body.playlist.id;
+                playlistCriteria[0].playlist_name = req.body.playlist.name;
+                await playlistCriteria[0].save();
+            } else {
+                playlistCriteria = await user.createPlaylistCriterium({
+                    source_id: musicSource.id,
+                    playlist_id: req.body.playlist.id,
+                    playlist_name: req.body.playlist.name,
+                    system_security: sec
+                });
+                await playlistCriteria.setMusicSource(musicSource);
+            }
+        }
+    }
+
+    if (req.body.region) {
+        for (let i = 0; i < req.body.region.length; i++) {
+            const region = req.body.region[i];
+
+            var playlistCriteria = await user.getPlaylistCriteria({
+                where: {
+                    region_id: region.region_id,
+                    source_id: musicSource.id
+                }
+            });
+
+            if (playlistCriteria[0]) {
+                playlistCriteria[0].playlist_id = req.body.playlist.id;
+                playlistCriteria[0].playlist_name = req.body.playlist.name;
+                await playlistCriteria[0].save();
+            } else {
+                playlistCriteria = await user.createPlaylistCriterium({
+                    source_id: musicSource.id,
+                    playlist_id: req.body.playlist.id,
+                    playlist_name: req.body.playlist.name,
+                    region_id: region.region_id
+                });
+                await playlistCriteria.setMusicSource(musicSource);
+            }
+        }
+    }
+
+    res.send('ok');
+}));
+
+apiRoutes.get('/api/music_sources/linked/:source_id/playlistCriteria', asyncMiddleware(async (req, res, next) => {
+
+    const user = await User.findOne({where: {session_id: req.session.id}});
+    const musicSources = await user.getMusicSources({where: {id: req.params.source_id}});
+    const musicSource = musicSources[0];
+
+    var playlists = [];
+
+    if (req.query['criteria']) {
+        playlists = await musicSource.getPlaylistCriteria({
+            where: {
+                [req.query['criteria']]: {
+                    [Seq.Op.not]: null
+                }
+            }
+        });
+    } else {
+        playlists = await musicSource.getPlaylistCriteria();
+    }
+
+    res.json(playlists);
+}));
+
+apiRoutes.delete('/api/music_sources/linked/:source_id/playlistCriteria/:playlistCriteriaId', asyncMiddleware(async (req, res, next) => {
+    const user = await User.findOne({where: {session_id: req.session.id}});
+    const musicSources = await user.getMusicSources({where: {id: req.params.source_id}});
+    const musicSource = musicSources[0];
+
+    const playlist = await musicSource.getPlaylistCriteria({
+        where: {
+            id: req.params.playlistCriteriaId
+        }
+    });
+
+    if (!playlist[0]) {
+        res.status(404).send('Playlist criteria not found');
+        return;
+    }
+
+    await playlist[0].destroy();
+
+    res.send('ok');
+}));
+
 apiRoutes.get('/api/music_sources/linked/:source_id', asyncMiddleware(async (req, res, next) => {
     const user = await User.findOne({where: {session_id: req.session.id}});
-    const musicSource = await user.getMusicSources({where: {id: req.params.source_id}})[0];
+    const musicSource = await user.getMusicSources({
+        where: {
+            id: req.params.source_id
+        }
+    });
+
+    if (!musicSource[0]) {
+        res.status(404).send('Music source id not found');
+    }
+
+    res.json(musicSource[0]);
 }));
 
 apiRoutes.delete('/api/music_sources/linked/:source_id', asyncMiddleware(async (req, res, next) => {

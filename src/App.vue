@@ -1,75 +1,73 @@
 <template>
 <v-app id="ejr" dark>
-    <router-view/>
-    <!--
-    <v-content>
-        <v-container>
-            <v-layout wrap>
-                <v-flex xs12>
-                    <h1 class="mb-1 display-1">EVE Jukebox Redux</h1>
-                </v-flex>
-                <v-flex xs12>
-                    <v-card raised dark>
-                        <v-card-title class="grey darken-4">Active Character</v-card-title>
+    <v-content v-if="loading_status">
+        <v-container fluid>
+            <v-layout justify-center>
+                <v-flex xs12 sm8 md4>
+                    <v-card class="elevation-13">
+                        <v-card-title class="elevation-3">
+                            Loading ...
+                        </v-card-title>
                         <v-card-text>
-                            <v-layout wrap>
-                                <v-flex xs6>
-                                    <v-layout wrap>
-                                        <v-flex xs3>
-                                            <v-avatar size="100">
-                                                <img :src="active_character_portrait">
-                                            </v-avatar>
-                                        </v-flex>
-                                        <v-flex class="ml-3">
-                                            <h4 class="text-uppercase font-weight-black text--darken-2">
-                                                Active Character
-                                            </h4>
-                                            <p>
-                                                {{ active_character_name }}
-                                                <v-list class="ma-0 pa-0">
-                                                    <v-list-tile @click="" class="ma-0 pa-0">
-                                                        <v-list-tile-content class="caption ma-0 pa-0">
-                                                            ZKillBoard
-                                                        </v-list-tile-content>
-                                                    </v-list-tile>
-                                                </v-list>
-                                            </p>
-
-                                            <h4 class="text-uppercase font-weight-black">
-                                                Status
-                                            </h4>
-                                            <p>
-                                                OFFLINE
-                                            </p>
-                                        </v-flex>
-                                    </v-layout>
-                                </v-flex>
-                                <v-flex xs6>
-                                    <h1>Status:</h1>
-                                    <p>Who knows</p>
-                                </v-flex>
-                            </v-layout>
+                            <v-progress-circular indeterminate x-large v-if="loading"/>
+                            <template v-else-if="loading_error">
+                                <h4 class="red--text text--darken-4">ERROR</h4>
+                                <div class="red--text">{{ loading_error_msg }} {{ retry_count }}</div>
+                                <div>Retrying in {{ retry_count }} second(s).</div>
+                            </template>
                         </v-card-text>
-                        <v-card-actions class="grey darken-4">
-                            <v-btn @click="$router.push('/eve-character-management')"><v-icon class="mr-2">settings</v-icon> Manage Characters</v-btn>
-                        </v-card-actions>
                     </v-card>
                 </v-flex>
             </v-layout>
         </v-container>
     </v-content>
-    <Toolbar />
-    <LeftDrawer />
-    <RouterView />
+    <v-content v-else-if="no_active_characters">
+        <v-container fluid>
+            <v-layout justify-center>
+                <v-flex xs12 sm8 md6>
+                    <EveCharactersCard/>
+                </v-flex>
+            </v-layout>
+        </v-container>
+    </v-content>
+    <v-content v-else>
+        <v-container fluid>
+            <v-layout wrap>
+                <v-flex xs12>
+                    <h1 class="mb-1 display-1">EVE Jukebox Redux</h1>
+                </v-flex>
+                <v-flex xs12>
+                    <EveCharacterCard/>
+                </v-flex>
+                <v-flex xs12 class="mt-4">
+                    <MusicCard/>
+                </v-flex>
+            </v-layout>
+        </v-container>
+    </v-content>
+
+    <!--
+    <transition name="fade">
+        <router-view v-if="loading === false"/>
+    </transition>
 -->
 </v-app>
 </template>
 
 <style lang="scss">
 @import './sass/fonts.scss';
+.fade-enter-active, .fade-leave-active {
+  transition: opacity .5s;
+}
+.fade-enter, .fade-leave-to /* .fade-leave-active below version 2.1.8 */ {
+  opacity: 0;
+}
 </style>
 <script>
 import axios from 'axios';
+import EveCharactersCard from './components/cards/EveCharacters.vue';
+import EveCharacterCard from './components/cards/EveCharacter.vue';
+import MusicCard from './components/cards/MusicSource.vue';
 //import Main from './views/Main.vue';
 
 //import Toolbar from './components/AppToolbar.vue';
@@ -78,23 +76,99 @@ import axios from 'axios';
 export default {
     name: 'App',
 
-    created() {
-        axios.get('/api/session/status')
-        .then(() => axios.get('/api/eve/characters'))
-        .then((res) => {
-            this.$store.commit('SET_CHARACTERS', res.data.characters);
-        })
-        .then(() => axios.get('/api/eve/active_character'))
-        .then((res) => {
-            const char = res.data;
-            this.$store.commit('ACTIVATE_CHARACTER', char);
-            this.loading = false;
-        })
-        .catch((err) => {
-            this.loading = false;
-            console.error(err.response);
-            this.$router.push('/eve-character-management');
-        });
+    components: {
+        EveCharactersCard,
+        EveCharacterCard,
+        MusicCard
+    },
+
+    data() {
+        return {
+            loading_status: true,
+            loading: true,
+            no_active_characters: false,
+            loading_error: false,
+            loading_error_msg: '',
+            retry_timer: null,
+            retry_count: 5
+        }
+    },
+
+    computed: {
+        active_character() {
+            return this.$store.state.active_character;
+        }
+    },
+
+    watch: {
+        active_character(char) {
+            if (char) {
+                this.$connect();
+                this.no_active_characters = false;
+            } else {
+                this.$disconnect();
+                this.no_active_characters = true;
+            }
+        }
+    },
+
+    methods: {
+
+        async refreshTicker() {
+            this.retry_count--;
+
+            if (this.retry_count <= 0 && this.loading !== true ) {
+                this.retry_count = 5;
+                await this.refreshStatus();
+            } else {
+                if (this.loading === true) {
+                    return;
+                }
+                this.retry_count--;
+                setTimeout(() => {
+                    this.refreshTicker();
+                }, 1000);
+            }
+        },
+
+        async refreshStatus() {
+            this.loading_status = true;
+            this.loading = true;
+
+            return axios.get('/api/session/status')
+            .then(() => {
+                return axios.get('/api/eve/active_character');
+            })
+            .then((res) => {
+                const char = res.data;
+                this.$store.commit('ACTIVATE_CHARACTER', char);
+                this.loading = false;
+                this.loading_status = false;
+                this.loading_error = false;
+                this.loading_error_msg = '';
+            })
+            .catch((err) => {
+                console.error(err.response);
+                if (err['response'] && err['response'].status === 403) {
+                    this.no_active_characters = true;
+                    this.loading_status = false;
+                    this.loading = false;
+                    this.loading_error = false;
+                    this.loading_error_msg = '';
+                } else {
+                    this.loading = false;
+                    this.no_active_characters = true;
+                    this.loading_error = true;
+                    this.loading_error_msg = 'There was a problem trying to communicate with the server.';
+                    this.refreshTicker();
+                }
+            });
+        }
+    },
+
+    mounted() {
+
+        this.refreshStatus();
     }
 }
 </script>

@@ -1,77 +1,62 @@
 <template>
-<v-content>
-    <v-container fluid fill-height>
-        <v-layout justify-center>
-            <v-flex xs12 sm8 md8>
-                <v-card class="elevation-12">
-                    <v-toolbar dark>
-                        <v-toolbar-title>EVE Online Characters</v-toolbar-title>
-                    </v-toolbar>
-                    <v-card-text v-if="loading">
-                        <v-progress-circular
-                        indeterminate
-                        />
-                    </v-card-text>
+<v-card class="elevation-12">
+    <v-toolbar dark>
+        <v-toolbar-title>EVE Online Characters</v-toolbar-title>
+    </v-toolbar>
+    <v-card-text v-if="loading">
+        <v-progress-circular
+        indeterminate
+        />
+    </v-card-text>
 
-                    <v-card-text v-else>
-                        <p v-if="characters.length === 0">
-                            You have no EVE Online characters registered!!
-                        </p>
-                        <v-list two-line v-else>
-                            <v-subheader>Characters</v-subheader>
+    <v-card-text v-else>
+        <p v-if="characters.length === 0">
+            You have no EVE Online characters registered!!
+        </p>
+        <v-list two-line v-else>
+            <v-subheader>Characters</v-subheader>
 
-                            <v-list-tile
-                                v-for="char in characters"
-                                :key="char.character_id"
-                                avatar
-                                @click="activateCharacter(char)">
-                                <v-list-tile-avatar>
-                                    <img :src="'/portraits/' + char.character_id + '_512.jpg'" />
-                                </v-list-tile-avatar>
+            <v-list-tile
+                v-for="char in characters"
+                :key="char.character_id"
+                avatar
+                @click="activateCharacter(char)">
+                <v-list-tile-avatar>
+                    <img :src="'/portraits/' + char.character_id + '_512.jpg'" />
+                </v-list-tile-avatar>
 
-                                <v-list-tile-content>
-                                    <v-list-tile-title>{{ char.character_name }}</v-list-tile-title>
-                                    <v-list-tile-sub-title>{{ char.character_id }}</v-list-tile-sub-title>
-                                </v-list-tile-content>
+                <v-list-tile-content>
+                    <v-list-tile-title>{{ char.character_name }}</v-list-tile-title>
+                    <v-list-tile-sub-title>{{ char.character_id }}</v-list-tile-sub-title>
+                </v-list-tile-content>
 
-                                <v-list-tile-action>
-                                    <v-btn icon ripple v-if="deleting_character !== char.character_id">
-                                        <v-icon @click.native.prevent="deleteCharacter(char.character_id)">delete</v-icon>
-                                    </v-btn>
-                                    <v-progress-circular
-                                    indeterminate
-                                    v-else/>
-                                </v-list-tile-action>
-                            </v-list-tile>
-                        </v-list>
-                        <p>
-                            To add characters, click the button below.
-                        </p>
-                        <v-layout>
-                            <v-flex transition="fade-transition" v-if="adding_character === false">
-                                <v-img :src="eve_login_logo" @click="doLogin" width="195" height="30"/>
-                            </v-flex>
-                            <v-flex v-else transition="fade-transition">
-                                <v-progress-circular
-                                :size="25"
-                                indeterminate
-                                transition="fade-transition"
-                                />
-                            </v-flex>
-                        </v-layout>
-                    </v-card-text>
-                    <!--
-                    <v-card-actions class="session_data">
-                        Session: {{ session_id }} - Time Left: {{ session_time_left }}
-                    </v-card-actions>
-                    -->
-                </v-card>
-
+                <v-list-tile-action>
+                    <v-btn icon ripple v-if="deleting_character !== char.character_id">
+                        <v-icon @click.native.prevent="deleteCharacter(char.character_id)">delete</v-icon>
+                    </v-btn>
+                    <v-progress-circular
+                    indeterminate
+                    v-else/>
+                </v-list-tile-action>
+            </v-list-tile>
+        </v-list>
+        <p>
+            To add characters, click the button below.
+        </p>
+        <v-layout>
+            <v-flex transition="fade-transition" v-if="adding_character === false">
+                <v-img :src="eve_login_logo" @click="doLogin" width="195" height="30"/>
+            </v-flex>
+            <v-flex v-else transition="fade-transition">
+                <v-progress-circular
+                :size="25"
+                indeterminate
+                transition="fade-transition"
+                />
             </v-flex>
         </v-layout>
-    </v-container>
-
-</v-content>
+    </v-card-text>
+</v-card>
 </template>
 
 <script>
@@ -191,7 +176,7 @@ export default {
             })
             .then(() => {
                 this.$store.commit('ACTIVATE_CHARACTER', char);
-                this.$router.push('/');
+                this.$emit('active-character', char);
             });
         }
     },
@@ -205,8 +190,7 @@ export default {
     mounted() {
         window.document.addEventListener('refresh-eve-characters', this.onRefreshEveCharacters);
 
-        this.loadStatus()
-        .then(this.loadCharacters)
+        this.loadCharacters()
         .then(() => {
             __evt_timer = setInterval(() => {
                 this.secondLoop();
@@ -217,9 +201,3 @@ export default {
 }
 
 </script>
-
-<style lang="scss">
-.session_data {
-    font-size: 75%;
-}
-</style>

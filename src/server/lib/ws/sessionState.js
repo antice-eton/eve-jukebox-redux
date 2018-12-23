@@ -5,6 +5,7 @@ function new_state() {
         active_character_id: null,
         active_musicsource_id: null,
         active_character: null,
+        active_musicsource: null,
         user: null,
         ticking: false,
         previous_tick_data: {},
@@ -25,6 +26,9 @@ function delete_state(sessionId) {
 }
 
 function get_state(sessionId) {
+    if (!sessionId) {
+        throw new Error('Invalid session id:' + sessionId);
+    }
     if (!sessions[sessionId]) {
         console.log('mkaing new state for:', sessionId);
         sessions[sessionId] = new_state();

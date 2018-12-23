@@ -1,5 +1,6 @@
 const axios = require('axios');
 const qs = require('qs');
+const logging = require('../../../../server/utils.js').get_logger();
 
 class SpotifyModel {
     constructor(musicSource, appConfig) {
@@ -7,6 +8,7 @@ class SpotifyModel {
         this.source = musicSource;
         this.options = this.source.configuration;
         this.appConfig = appConfig;
+        this.cache = {};
     }
 
     async _req(options, stopRetry) {
@@ -21,7 +23,24 @@ class SpotifyModel {
 
         newOptions['headers']['Authorization'] = 'Bearer ' + this.options.tokens.access;
 
+        if (this.cache[newOptions['url']]) {
+            if (Date.now() <= this.cache[newOptions['url']].expires) {
+                return this.cache[newOptions['url']].data;
+            } else {
+                delete this.cache[newOptions['url']];
+            }
+        }
+
+        logging.info('Spotify request: ' + newOptions['url']);
+
         return axios(newOptions)
+        .then((res) => {
+            this.cache[newOptions['url']] = {
+                expires: Date.now() + 5000,
+                data: res.data
+            }
+            return res.data;
+        })
         .catch(async (err) => {
             if (err.response && err.response.status === 401) {
                 if (stopRetry === true) {
@@ -49,9 +68,11 @@ class SpotifyModel {
                     this.options = this.source.configuration;
 
                     console.log('[ESC] Retrying request');
-                    return this._req(options, true);
-
-                })
+                    return this._req(options, true)
+                    .then((res) => {
+                        return res;
+                    });
+                });
                 console.log('[ESC] Error talking to spotify');
                 console.log(err.response);
             }
@@ -61,16 +82,33 @@ class SpotifyModel {
 
     async playlists() {
         return this._req({
-            url: '/v1/me/playlists'
+            url: '/v1/me/playlists?limit=50'
         })
         .then((res) => {
-            return res.data.items.map((item) => {
+            return res.items.map((item) => {
                 return {
+                    id: item.id,
                     name: item.name,
-                    playlist_uri: item.uri,
-                    total_tracks: item.tracks.total
+                    itemCount: item.tracks.total
                 };
             });
+        });
+    }
+
+    async playlist(playlistId) {
+        console.log('playlist id:', playlistId);
+        return this._req({
+            url: '/v1/playlists/' + playlistId
+        })
+        .then((res) => {
+            if (!res) {
+                return;
+            }
+            return {
+                id: res.id,
+                name: res.name,
+                itemCounter: res.tracks.totals
+            }
         });
     }
 
@@ -79,14 +117,37 @@ class SpotifyModel {
             url: '/v1/me/player/devices'
         });
 
-        console.log('spotify devices headers:', res.headers);
-
-        if (res.data.devices.length === 0) {
+        if (!res) {
             return false;
-        } else if (res.data.devices.filter((device) => device.is_active).length === 0) {
+        }
+
+        if (!res.devices) {
+            return false;
+        }
+
+        if (res.devices.length === 0) {
+            return false;
+        } else if (res.devices.filter((device) => device.is_active).length === 0) {
             return false;
         } else {
             return true;
+        }
+    }
+
+    async nowPlaying() {
+        const res = await this._req({
+            url: '/v1/me/player/currently-playing'
+        });
+
+        if (!res.item) {
+            return;
+        }
+
+        return {
+            item_id: res.item.id,
+            item_name: res.item.name,
+            item_artists: res.item.artists.map((artist) => artist.name),
+            playing: res.is_playing
         }
     }
 }

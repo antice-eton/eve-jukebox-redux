@@ -7,11 +7,13 @@ Vue.use(Router);
 
 export default new Router({
   routes: [
+      /*
     {
         path: '/',
         name: 'home',
         component: Main,
     },
+    */
     {
         path: '/eve-character-management',
         name: 'eve-character-management',

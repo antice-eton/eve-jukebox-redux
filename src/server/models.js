@@ -63,6 +63,19 @@ var MusicSource = orm.define('musicSource', {
 User.hasMany(MusicSource);
 MusicSource.belongsTo(User);
 
+var PlaylistCriteria = orm.define('playlistCriteria', {
+    playlist_id: Seq.STRING,
+    playlist_name: Seq.STRING,
+    source_id: Seq.INTEGER,
+    system_security: Seq.FLOAT,
+    region_id: Seq.INTEGER
+});
+User.hasMany(PlaylistCriteria);
+MusicSource.hasMany(PlaylistCriteria);
+PlaylistCriteria.belongsTo(User);
+PlaylistCriteria.belongsTo(MusicSource);
+
+
 var EveRegion = orm.define('region', {
     name: Seq.STRING,
     description: Seq.TEXT,
@@ -112,9 +125,11 @@ EveFaction = orm.define('faction', {
 });
 
 EveAlliance = orm.define('alliance', {
+    alliance_id: Seq.INTEGER,
     date_founded: Seq.DATE,
     name: Seq.STRING,
-    ticker: Seq.STRING
+    ticker: Seq.STRING,
+    faction_id: Seq.INTEGER
 });
 
 EveCorporation = orm.define('corporation', {
@@ -151,7 +166,8 @@ const models = {
     EveAlliance,
     EveCorporation,
     EveStation,
-    EveName
+    EveName,
+    PlaylistCriteria
 };
 
 for (let model of Object.keys(models)) {

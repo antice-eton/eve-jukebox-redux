@@ -59,6 +59,50 @@ async function eve_sso_callback(accessToken, refreshToken, profile, done) {
     return done(null, profile);
 }
 
+apiRoutes.get('/api/eve/stations', asyncMiddleware(async (req, res, next) => {
+    if (req.query['q']) {
+        const stations = await models.EveStation.findAll({
+            where: {
+                name: {
+                    [Seq.Op.iLike]: req.query['q'] + '%'
+                }
+            }
+        });
+
+        res.json({
+            stations: stations
+        });
+    } else {
+        const stations = await models.EveStation.findAll();
+
+        res.json({
+            stations: stations
+        });
+    }
+}));
+
+apiRoutes.get('/api/eve/regions', asyncMiddleware(async (req, res, next) => {
+    if (req.query['q']) {
+        const regions = await models.EveRegion.findAll({
+            where: {
+                name: {
+                    [Seq.Op.iLike]: req.query['q'] + '%'
+                }
+            }
+        });
+
+        res.json({
+            regions: regions
+        });
+    } else {
+        const regions = await models.EveRegion.findAll();
+
+        res.json({
+            regions: regions
+        });
+    }
+}));
+
 apiRoutes.get('/api/eve/systems', asyncMiddleware(async (req, res, next) => {
 
     if (req.query['q']) {
