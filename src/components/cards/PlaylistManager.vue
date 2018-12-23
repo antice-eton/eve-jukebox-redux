@@ -2,6 +2,10 @@
 <v-card class="elevation-12">
     <v-toolbar dark>
         <v-toolbar-title>Playlist Manager</v-toolbar-title>
+        <v-spacer />
+        <v-toolbar-items v-if="dialog">
+            <v-btn flat icon @click="close"><v-icon>close</v-icon></v-btn>
+        </v-toolbar-items>
     </v-toolbar>
     <v-card-text>
         <p v-if="playlists.length === 0">
@@ -33,7 +37,7 @@
         <v-btn @click="add_playlist_dialog = true"><v-icon class="mr-2">playlist_add</v-icon> Add Playlist</v-btn>
     </v-card-actions>
 
-    <v-dialog v-model="add_playlist_dialog" max-width="500">
+    <v-dialog v-model="add_playlist_dialog" persistent max-width="600">
         <AddPlaylistStepper @cancel="onAddPlaylistCancel" @source-added="refreshPlaylists(); add_playlist_dialog = false"/>
     </v-dialog>
 
@@ -48,6 +52,8 @@ export default {
     components: {
         AddPlaylistStepper
     },
+
+    props: ['dialog'],
 
     data() {
         return {
@@ -81,7 +87,7 @@ export default {
 
     computed: {
         musicsource_id() {
-            return this.$store.state.active_musicsource_id;
+            return this.$store.state.active_musicsource.id;
         },
 
         hidden() {
@@ -108,6 +114,12 @@ export default {
     },
 
     methods: {
+
+        close() {
+            Object.assign(this.$data, this.$options.data());
+            this.$emit('cancel');
+        },
+
         onAddPlaylistCancel(newPlaylist) {
             if (newPlaylist) {
                 if (this.selected_playlist_criteria) {

@@ -19,8 +19,6 @@ const sessionState = require('../../ws/sessionState.js').get_state;
 
 async function eve_sso_callback(accessToken, refreshToken, profile, done) {
 
-    console.log('[ESC] EVE SSO Callback');
-
     const character = await Character.create({
         character_id: profile.CharacterID,
         character_name: profile.CharacterName,
@@ -29,8 +27,6 @@ async function eve_sso_callback(accessToken, refreshToken, profile, done) {
         refresh_token: refreshToken,
         token_created: new Date()
     });
-
-    console.log('[ESC] New character created:', character.character_name, '(',character.id,')');
 
     const image_url = 'https://image.eveonline.com/Character/' + character.character_id + '_512.jpg';
 
@@ -46,7 +42,6 @@ async function eve_sso_callback(accessToken, refreshToken, profile, done) {
         fs.unlinkSync(dl_target);
     }
 
-    console.log('[ESC] Downloading character portrait...');
     const res = await axios({
         method: 'GET',
         url: image_url,
@@ -55,7 +50,6 @@ async function eve_sso_callback(accessToken, refreshToken, profile, done) {
 
     fs.writeFileSync(dl_target, res.data);
 
-    console.log('[ESC] EVE SSO Callback complete');
     return done(null, profile);
 }
 
@@ -130,11 +124,9 @@ apiRoutes.get('/api/eve/systems', asyncMiddleware(async (req, res, next) => {
 apiRoutes.get('/api/eve/verify',
     passport.authenticate('eveonline-sso', {failureRedirect: '/api/eve/verify-error', session: false}),
     async function(req, res) {
-        console.log('[ESC] Post EVE SSO Callback, character name: ', req.user.CharacterName);
 
         const user = await User.findOne({where: { session_id: req.session.id }});
         const char = await Character.findOne({ where: { character_id: req.user.CharacterID}});
-
 
         await user.addCharacter(char);
         res.send(`
@@ -294,7 +286,7 @@ apiRoutes.post('/api/eve/active_character', asyncMiddleware(async(req, res, next
     await user.save();
 
     req.session.active_character_id = req.body.character_id;
-    sessionState(req.session.id).active_character_id = req.session.active_character_id;
+    sessionState(req.session.id).refresh_user = true;
     res.send('ok');
 }));
 
@@ -302,37 +294,44 @@ apiRoutes.delete('/api/eve/active_character', asyncMiddleware(async (req, res, n
     const user = await User.findOne({ where: { session_id: req.session.id }});
     user.active_character_id = null;
     req.session.active_character_id = null;
-    serverState(req.session.id).active_charactrer_id = null;
-    // wsClient.unsetActiveCharacterId(req.session.id);
+    sessionState(req.session.id).refresh_user = true;
     res.send('ok');
 }));
 
 apiRoutes.get('/api/eve/active_character', asyncMiddleware(async (req, res, next) => {
 
-    if (req.session.active_character_id) {
+    const user = await User.findOne({where: {session_id: req.session.id}});
 
-        const char_id = req.session.active_character_id;
-        // wsClient.setActiveCharacterId(req.session.id, char_id);
-
-        const user = await User.findOne({where: {session_id: req.session.id}});
-        const characters = await user.getCharacters({where: {character_id: char_id}});
-
-        if (characters.length === 0) {
-            res.status(404).send('No active characters');
-        } else {
-            const char = characters[0];
-            sessionState(req.session.id).active_character_id = char.character_id;
-            res.json({
-                character_id: char.character_id,
-                character_name: char.character_name,
-                createdAt: char.createdAt,
-                expires_on: char.expires_on,
-                token_created: char.token_created
-            })
-        }
-    } else {
-        res.status(404).send('No active characters');
+    if (!user) {
+        res.status(403).send('No active session user');
+        return;
     }
+
+    if (!user.active_character_id) {
+        res.status(403).send('No active characters');
+        return;
+    }
+
+    const characters = await user.getCharacters({
+        where: {
+            character_id: user.active_character_id
+        }
+    });
+
+    if (!characters[0]) {
+        res.status(403).send('User active character id has no coresponding character');
+        return;
+    }
+
+    const char = characters[0];
+
+    res.json({
+        character_id: char.character_id,
+        character_name: char.character_name,
+        createdAt: char.createdAt,
+        expires_on: char.expires_on,
+        token_created: char.token_created
+    });
 }));
 
 module.exports = {

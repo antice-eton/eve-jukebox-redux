@@ -1,6 +1,7 @@
 const get_logger = require('../../utils.js').get_logger;
 const logger = get_logger();
 const getSessionData = require('./sessionState.js').get_state;
+const getSessionState = require('./sessionState.js').get_session_state;
 const models = require('../../models.js');
 
 const eveFuncs = require('./eve.js');
@@ -43,7 +44,8 @@ function connect(ws, req) {
 
         const state = getSessionData(sessionId);
         state.ws_client = ws;
-
+        state.refresh_user = true;
+        
         startSubscription(sessionId);
     } catch (err) {
         logger.error('[WS] wsClient::connect() - error');
@@ -88,7 +90,8 @@ function tickWrapper(sessionId) {
 async function tick(sessionId) {
     const state = getSessionData(sessionId);
 
-    if (!state.user) {
+    if (!state.user || state.refresh_user === true) {
+        logger.debug('[WS] Reloading user data');
         const user = await models.User.findOne({
             where: {
                 session_id: sessionId
@@ -99,18 +102,19 @@ async function tick(sessionId) {
             return;
         }
         state.user = user;
+        state.refresh_user = false;
     }
 
     if (state.tick_counter % 10 === 0) {
-        // logger.debug('[WS] Reloading user data');
-        // await state.user.reload();
+        if (state.refresh_user) {
+
+            await state.user.reload();
+        }
     }
 
     return Promise.all([
-        eveFuncs.report_location(sessionId),
-        eveFuncs.report_online_status(sessionId),
-        msFuncs.ms_status(sessionId),
-        msFuncs.ms_nowplaying(sessionId)
+        eveFuncs.tick(sessionId),
+        msFuncs.tick(sessionId)
     ]);
 
 }

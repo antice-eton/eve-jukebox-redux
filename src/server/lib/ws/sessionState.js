@@ -2,6 +2,9 @@ const sessions = {};
 
 function new_state() {
     return {
+        refresh_active_character: true,
+        refresh_active_musicsource: true,
+        refresh_user: true,
         active_character_id: null,
         active_musicsource_id: null,
         active_character: null,

@@ -82,6 +82,13 @@ class FoobarModel {
         return playlistItem[0];
     }
 
+    async play(playlistId) {
+        return this._req({
+            url: '/api/player/play/' + encodeURI(playlistId) + '/0',
+            method: 'post'
+        });
+    }
+
     async status() {
 
         return this._req({

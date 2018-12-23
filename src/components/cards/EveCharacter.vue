@@ -6,11 +6,12 @@
             <v-flex xs6>
                 <v-layout wrap>
                     <v-flex xs3>
-                        <v-avatar size="100">
+                        <v-progress-circular indeterminate v-if="loading_character"/>
+                        <v-avatar size="100" v-else>
                             <img :src="character_portrait">
                         </v-avatar>
                     </v-flex>
-                    <v-flex class="ml-3">
+                    <v-flex class="ml-3" v-if="!loading_character">
                         <h4 class="text-uppercase font-weight-black text--darken-2">
                             Character
                         </h4>
@@ -33,7 +34,8 @@
                     </v-flex>
                 </v-layout>
             </v-flex>
-            <v-flex xs6>
+            <v-flex xs6 v-if="loading_character"/>
+            <v-flex xs6 v-else>
                 <h4 class="text-uppercase font-weight-black text--darken-2">
                     Location <v-progress-circular size="16" indeterminate v-if="loading_location"/>
                 </h4>
@@ -75,7 +77,7 @@
         <v-btn @click="manage_characters = true"><v-icon class="mr-2">settings</v-icon> Manage Characters</v-btn>
     </v-card-actions>
     <v-dialog v-model="manage_characters" max-width="500">
-        <EveCharactersCard @active-character="manage_characters = false"/>
+        <EveCharactersCard @cancel="manage_characters = false"/>
     </v-dialog>
 </v-card>
 </template>
@@ -110,6 +112,10 @@ export default {
             return '/portraits/' + this.character_id + '_512.jpg';
         },
 
+        character() {
+            return this.$store.state.active_character;
+        },
+
         online() {
             return this.$store.state.online;
         },
@@ -124,6 +130,10 @@ export default {
 
         loading_location() {
             return (this.$store.state.loading_location || this.$store.state.socket_connected === false);
+        },
+
+        loading_character() {
+            return (this.$store.state.loading_character || this.$store.state.socket_connected === false);
         }
     }
 }

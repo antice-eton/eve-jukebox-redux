@@ -76,15 +76,12 @@ export default {
             session_time_left: null,
             deleting_character: null,
             __time_left_counter: null,
-            adding_character: false
+            adding_character: false,
+            characters: []
         }
     },
 
     computed: {
-        characters() {
-            return this.$store.state.characters;
-        },
-
         active_character_id() {
             return this.$store.state.active_character_id;
         }
@@ -100,7 +97,7 @@ export default {
         async loadCharacters() {
             return axios('/api/eve/characters')
             .then((res) => {
-                this.$store.commit('SET_CHARACTERS', res.data.characters);
+                this.characters = res.data.characters;
             });
         },
 
@@ -132,8 +129,7 @@ export default {
                 this.deleting_character = null;
                 if (character_id === this.active_character_id) {
                     if (this.characters.length === 0) {
-                        this.$store.commit('RESET_ACTIVATION');
-                        this.$router.push('/login');
+                        this.no_active_characters = true;
                         return;
                     }
 
@@ -171,13 +167,9 @@ export default {
             if (this.deleting_character) {
                 return;
             }
-            axios.post('/api/eve/active_character', {
-                character_id: char.character_id
-            })
-            .then(() => {
-                this.$store.commit('ACTIVATE_CHARACTER', char);
-                this.$emit('active-character', char);
-            });
+
+            this.$store.dispatch('activate_character', char.character_id);
+            this.$emit('cancel');
         }
     },
 

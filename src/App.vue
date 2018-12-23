@@ -25,7 +25,7 @@
         <v-container fluid>
             <v-layout justify-center>
                 <v-flex xs12 sm8 md6>
-                    <EveCharactersCard/>
+                    <EveCharactersCard @cancel="refreshStatus"/>
                 </v-flex>
             </v-layout>
         </v-container>
@@ -90,18 +90,32 @@ export default {
             loading_error: false,
             loading_error_msg: '',
             retry_timer: null,
-            retry_count: 5
+            retry_count: 5,
+            reload: false
         }
     },
 
     computed: {
-        active_character() {
-            return this.$store.state.active_character;
+        active_character_id() {
+            return this.$store.state.active_character_id;
+        },
+
+        ws_reconnecting() {
+            return this.$store.state.socket_reconnecting;
         }
     },
 
     watch: {
-        active_character(char) {
+        ws_reconnecting(newVal) {
+            if (newVal === true) {
+                this.reload = true;
+            } else if (newVal === false && this.reload === true) {
+                this.refreshStatus();
+                this.reload = false;
+            }
+        },
+
+        active_character_id(char) {
             if (char) {
                 this.$connect();
                 this.no_active_characters = false;
@@ -135,17 +149,24 @@ export default {
             this.loading_status = true;
             this.loading = true;
 
+
+
             return axios.get('/api/session/status')
             .then(() => {
+
                 return axios.get('/api/eve/active_character');
             })
             .then((res) => {
                 const char = res.data;
-                this.$store.commit('ACTIVATE_CHARACTER', char);
+
+                this.$store.dispatch('activate_character', char.character_id);
+
+                // this.$store.commit('ACTIVATE_CHARACTER', char);
                 this.loading = false;
                 this.loading_status = false;
                 this.loading_error = false;
                 this.loading_error_msg = '';
+                this.no_active_characters = false;
             })
             .catch((err) => {
                 console.error(err.response);
@@ -166,8 +187,12 @@ export default {
         }
     },
 
-    mounted() {
+    beforeDestroy() {
+        this.$disconnect();
+    },
 
+    mounted() {
+        this.$connect();
         this.refreshStatus();
     }
 }

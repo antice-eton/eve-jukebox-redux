@@ -86,12 +86,8 @@ export default {
         },
 
         activateMusicSource(sourceId) {
-            this.processing_source = sourceId;
-            axios.post('/api/music_sources/linked/' + sourceId + '/activate')
-            .then(() => {
-                this.processing_source = null;
-                this.$emit('activate-music-source');
-            });
+            this.$store.dispatch('activate_musicsource', sourceId);
+            this.$emit('cancel');
         },
     },
 

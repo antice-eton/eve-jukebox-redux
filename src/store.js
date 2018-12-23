@@ -1,6 +1,6 @@
 import Vue from 'vue';
 import Vuex from 'vuex';
-
+import axios from 'axios';
 Vue.use(Vuex);
 
 export default new Vuex.Store({
@@ -21,21 +21,40 @@ export default new Vuex.Store({
             docked: false
         },
 
+        loading_character: true,
         active_character_id: null,
         active_character_name: null,
-        active_character: null,
-        characters: [],
 
-        musicsource_status: null,
-        musicsource_active: null,
-        musicsource_nowPlaying: null,
-        musicsource_playing: false,
+        active_musicsource: {
+            id: null,
+            service_id: null,
+            service_name: null,
+            service_displayName: null,
+            status: false,
+            nowPlaying: null
+        },
+
+        active_musicsource_nowPlaying: null,
+        active_musicsource_playing: false,
+        active_musicsource_status: null,
+        loading_musicsource: true,
         loading_musicsource_status: true,
-        loading_musicsource_active: true,
         loading_musicsource_nowPlaying: true
     },
 
     mutations: {
+        LOADING_CHARACTER(state) {
+            state.loading_character = true;
+            state.loading_online = true;
+            state.loading_location = true;
+        },
+
+        LOADING_MUSICSOURCE(state) {
+            state.loading_musicsource = true;
+            state.loading_musicsource_status = true;
+            state.loading_musicsource_nowPlaying = true;
+        },
+
         SOCKET_ONOPEN(state, event) {
             state.socket_connected = true;
             state.socket_error = false;
@@ -64,7 +83,26 @@ export default new Vuex.Store({
         },
 
         SOCKET_ONMESSAGE(state, msg) {
-            if (msg.message === 'online') {
+
+            if (msg.message === 'active-character') {
+                state.active_character_id = msg.data.character_id;
+                state.active_character_name = msg.data.character_name;
+                state.loading_character = false;
+                state.loading_online = true;
+                state.loading_location = true;
+            } else if (msg.message === 'active-musicsource') {
+
+                state.active_musicsource.id = msg.data.musicsource_id;
+                state.active_musicsource.service_name = msg.data.service_name;
+                state.active_musicsource.service_id = msg.data.service_id;
+                state.active_musicsource.service_displayName = msg.data.service_displayName;
+
+                state.loading_musicsource = false;
+                state.loading_musicsource_status = true;
+                state.loading_musicsource_nowplaying = true;
+
+
+            } else if (msg.message === 'online') {
                 state.online = msg.data.online;
                 state.loading_online = false;
             } else if (msg.message === 'location') {
@@ -76,10 +114,10 @@ export default new Vuex.Store({
                 state.active_musicsource_name = msg.data.source_name;
                 state.loading_musicsource_active = false;
             } else if (msg.message === 'musicsource_status') {
-                state.musicsource_status = msg.data;
+                state.active_musicsource.status = msg.data;
                 state.loading_musicsource_status = false;
             } else if (msg.message === 'musicsource_nowPlaying') {
-                state.musicsource_nowPlaying = msg.data;
+                state.active_musicsource.nowPlaying = msg.data;
                 state.loading_musicsource_nowPlaying = false;
             }
             console.log('socket message:', msg);
@@ -99,7 +137,6 @@ export default new Vuex.Store({
         ACTIVATE_CHARACTER(state, character) {
             state.active_character_id = character.character_id;
             state.active_character_name = character.character_name;
-            state.active_character = character;
             state.loading_online = true;
             state.loading_location = true;
         },
@@ -117,6 +154,22 @@ export default new Vuex.Store({
 
         ADD_CHARACTER(state, character) {
             state.characters.push(character);
+        }
+    },
+
+    actions: {
+        async activate_character(context, characterId) {
+            context.commit('LOADING_CHARACTER');
+
+            await axios.post('/api/eve/active_character', {
+                character_id: characterId
+            });
+        },
+
+        async activate_musicsource(context, sourceId) {
+            context.commit('LOADING_MUSICSOURCE');
+
+            return await axios.post('/api/music_sources/linked/' + sourceId + '/activate');
         }
     }
 });

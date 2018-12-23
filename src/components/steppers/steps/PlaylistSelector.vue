@@ -37,11 +37,11 @@ export default {
 
     computed: {
         musicsource_id() {
-            return this.$store.state.active_musicsource_id;
+            return this.$store.state.active_musicsource.id;
         },
 
         musicsource_name() {
-            return this.$store.state.active_musicsource_name;
+            return this.$store.state.active_musicsource.name;
         },
     },
 

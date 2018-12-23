@@ -10,44 +10,49 @@
             <v-layout wrap>
                 <v-flex xs6>
                     <v-layout wrap>
-                        <v-flex xs3>
-                            <v-icon size="100" class="ma-0 pa-0">music_note</v-icon>
-                        </v-flex>
-                        <v-flex v-if="active_musicsource_id" class="ml-3">
-                            <h4 class="text-uppercase font-weight-black grey--text">
-                                Music Source
-                            </h4>
-                            <p>
-                                {{ music_source.service_name }}
-                            </p>
-                            <h4 class="text-uppercase font-weight-black grey--text">
-                                STATUS
-                            </h4>
-                            <p v-if="loading_musicsource_status" >
-                                <v-progress-circular size="16" indeterminate/> LOADING
-                            </p>
-                            <p v-else-if="musicsource_status === true">
-                                <v-icon small>power</v-icon> ONLINE
-                            </p>
-                            <p v-else>
-                                <v-icon small>power_off</v-icon> OFFLINE
-                            </p>
-                        </v-flex>
-                        <v-flex v-else>
-                            <h4 class="text-uppercase font-weight-black grey--text">
-                                Music Source
-                            </h4>
-                            <v-select
-                                :items="music_sources"
-                                item-text="service_name"
-                                item-value="id"
-                                v-model="selected_music_source"
-                                label="Choose a music source"/>
+                        <template v-if="loading_musicsource">
+                            <v-progress-circular indeterminate/>
+                        </template>
+                        <template v-else>
+                            <v-flex xs3>
+                                <v-icon size="100" class="ma-0 pa-0">music_note</v-icon>
+                            </v-flex>
+                            <v-flex v-if="musicsource_id" class="ml-3">
+                                <h4 class="text-uppercase font-weight-black grey--text">
+                                    Music Source
+                                </h4>
+                                <p>
+                                    {{ musicsource.service_name }}
+                                </p>
+                                <h4 class="text-uppercase font-weight-black grey--text">
+                                    STATUS
+                                </h4>
+                                <p v-if="loading_musicsource_status" >
+                                    <v-progress-circular size="16" indeterminate/> LOADING
+                                </p>
+                                <p v-else-if="musicsource_status === true">
+                                    <v-icon small>power</v-icon> ONLINE
+                                </p>
+                                <p v-else>
+                                    <v-icon small>power_off</v-icon> OFFLINE
+                                </p>
+                            </v-flex>
+                            <v-flex v-else>
+                                <h4 class="text-uppercase font-weight-black grey--text">
+                                    Music Source
+                                </h4>
+                                <v-select
+                                    :items="music_sources"
+                                    item-text="service_name"
+                                    item-value="id"
+                                    v-model="selected_music_source"
+                                    label="Choose a music source"/>
 
-                        </v-flex>
+                            </v-flex>
+                        </template>
                     </v-layout>
                 </v-flex>
-                <v-flex xs6 v-if="musicsource_status">
+                <v-flex xs6 v-if="musicsource_status && !loading_musicsource">
                     <h4 class="text-uppercase font-weight-black grey--text">
                         Now Playing <v-progress-circular size="16" indeterminate v-if="loading_musicsource_nowPlaying"/>
                     </h4>
@@ -79,15 +84,15 @@
     </v-card-actions>
 
     <v-dialog v-model="musicsources_dialog"  max-width="500">
-        <MusicSourcesCard @activate-music-source="musicsources_dialog = false; refresh();" @delete-music-source="refresh"/>
+        <MusicSourcesCard @cancel="musicsources_dialog = false;" @delete-music-source="refresh"/>
     </v-dialog>
 
     <v-dialog v-model="add_playlist_dialog" max-width="500">
         <AddPlaylistStepper @cancel="add_playlist_dialog = false"/>
     </v-dialog>
 
-    <v-dialog v-model="manage_playlists_dialog" max-width="500">
-        <PlaylistManager @cancel="manage_playlists_dialog = false" ref="playlistManager"/>
+    <v-dialog v-model="manage_playlists_dialog" max-width="500" scrollable persistent>
+        <PlaylistManager @cancel="manage_playlists_dialog = false" :dialog="true" />
     </v-dialog>
 
 </v-card>
@@ -116,27 +121,35 @@ export default {
         },
 
         musicsource_id() {
-            return this.$store.state.active_musicsource_id;
+            return this.$store.state.active_musicsource.id;
         },
 
         musicsource_name() {
-            return this.$store.state.active_musicsource_name;
+            return this.$store.state.active_musicsource.service_name;
         },
 
         musicsource_status() {
-            return this.$store.state.musicsource_status;
+            return this.$store.state.active_musicsource.status;
+        },
+
+        loading_musicsource() {
+            return (this.$store.state.loading_musicsource || this.$store.state.socket_connected === false);
         },
 
         loading_musicsource_status() {
-            return this.$store.state.loading_musicsource_status;
+            return (this.$store.state.loading_musicsource_status || this.$store.state.socket_connected === false);
         },
 
         loading_musicsource_nowPlaying() {
-            return this.$store.state.loading_musicsource_nowPlaying;
+            return (this.$store.state.loading_musicsource_nowPlaying || this.$store.state.socket_connected === false);
         },
 
         musicsource_nowPlaying() {
-            return this.$store.state.musicsource_nowPlaying;
+            return this.$store.state.active_musicsource.nowPlaying;
+        },
+
+        musicsource() {
+            return this.$store.state.active_musicsource;
         },
 
         musicsource_nowPlaying_artists() {
@@ -158,54 +171,21 @@ export default {
             loading: true,
             active_musicsource_id: null,
             status: false,
-            music_source: null,
             selected_playlist: 'None',
+            selected_playlist_id: null,
             music_sources: []
         }
     },
 
     watch: {
-        manage_playlists_dialog(newVal) {
-            if (newVal) {
-                // this.$refs['playlistManager'].refreshPlaylists();
-            }
-        },
-
-        active_musicsource_id(newVal) {
-            if (!newVal) {
-                return;
-            }
-
-            axios.get('/api/music_sources/linked/' + this.active_musicsource_id)
-            .then((res) => {
-                this.music_source = res.data;
-            });
-        },
-
-
-
         selected_music_source(newVal) {
             if (newVal) {
-                axios.post('/api/music_sources/linked/' + this.selected_music_source + '/activate')
-                .then((res) =>{
-                    this.active_musicsource_id = newVal;
-                    this.selected_music_source = null;
-                });
+                this.$store.dispatch('activate_musicsource', newVal);
             }
         },
 
         location(newVal) {
-            axios.post('/api/music_sources/location_playlist', {
-                location: newVal
-            })
-            .then((res) => {
-                if (res.data) {
-                    axios.get('/api/music_sources/linked/' + this.active_musicsource_id + '/playlists/' + res.data.playlist_id)
-                    .then((res) => {
-                        this.selected_playlist = res.data.name
-                    });
-                }
-            });
+            this.refreshPlaylist();
         }
     },
 
@@ -215,8 +195,29 @@ export default {
         },
 
         startPlaylist(playlist_id) {
-            axios.post('/api/music_sources/linked/' + this.active_musicsource_id + '/start_playlist', {
+            axios.post('/api/music_sources/linked/' + this.musicsource_id + '/start_playlist', {
                 playlist_id: playlist_id
+            });
+        },
+
+        refreshPlaylist() {
+            return axios.post('/api/music_sources/location_playlist', {
+                location: this.location
+            })
+            .then((res) => {
+                if (res.data) {
+                    if (res.data.playlist_id !== this.selected_playlist_id) {
+                        axios.post('/api/music_sources/linked/' + this.musicsource_id + '/playlists/' + res.data.playlist_id + '/play');
+                        axios.get('/api/music_sources/linked/' + this.musicsource_id + '/playlists/' + res.data.playlist_id)
+                        .then((plres) => {
+                            this.selected_playlist = plres.data.name
+                        });
+                        this.selected_playlist_id = res.data.playlist_id;
+                    }
+                }
+            })
+            .catch((err) => {
+                this.selected_playlist = null;
             });
         },
 
@@ -229,8 +230,10 @@ export default {
                 return axios.get('/api/music_sources/active');
             })
             .then((res) => {
-                this.music_source = res.data;
-                this.active_musicsource_id = this.music_source.id;
+                return this.$store.dispatch('activate_musicsource', res.data.id);
+            })
+            .then((res) => {
+                return this.refreshPlaylist();
             })
             .catch((err) => {
                 if (err['response'] && err['response'].status === 404) {

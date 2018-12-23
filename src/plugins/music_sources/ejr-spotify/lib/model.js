@@ -88,6 +88,7 @@ class SpotifyModel {
             return res.items.map((item) => {
                 return {
                     id: item.id,
+                    uri: item.uri,
                     name: item.name,
                     itemCount: item.tracks.total
                 };
@@ -106,9 +107,30 @@ class SpotifyModel {
             }
             return {
                 id: res.id,
+                uri: res.uri,
                 name: res.name,
                 itemCounter: res.tracks.totals
             }
+        });
+    }
+
+    async play(playlistId) {
+
+        const playlist = await this.playlist(playlistId);
+
+        return this._req({
+            method: 'put',
+            url: '/v1/me/player/play',
+            data: {
+                context_uri: playlist.uri
+            }
+        })
+        .catch((err) => {
+            if (err.response) {
+                console.error(err.response);
+            }
+
+            throw err;
         });
     }
 

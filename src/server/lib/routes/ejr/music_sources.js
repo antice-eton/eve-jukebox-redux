@@ -70,7 +70,7 @@ apiRoutes.post('/api/music_sources/linked/:source_id/activate', asyncMiddleware(
 
     req.session.active_musicsource_id = musicSource[0].id;
 
-    sessionState(req.session.id).active_musicsource_id = req.session.active_musicsource_id;
+    sessionState(req.session.id).refresh_user = true;
 
     await user.save();
     res.send('ok');
@@ -116,6 +116,18 @@ apiRoutes.get('/api/music_sources/linked/:source_id/playlists/:playlist_id', asy
     res.json(playlist);
 }));
 
+apiRoutes.post('/api/music_sources/linked/:source_id/playlists/:playlist_id/play', asyncMiddleware(async (req, res, next) => {
+    const user = await User.findOne({where: {session_id: req.session.id}});
+    const musicSources = await user.getMusicSources({where: {id: req.params.source_id}});
+    const musicSource = musicSources[0];
+
+    const model = new plugins[musicSource.model_name].model(musicSource, appConfig);
+
+    const play_res = await model.play(req.params.playlist_id);
+
+    res.send('ok');
+}));
+
 apiRoutes.post('/api/music_sources/location_playlist', asyncMiddleware(async (req, res, next) => {
     const user = await User.findOne({where: {session_id: req.session.id}});
     const musicSources = await user.getMusicSources({where: {id: user.active_musicsource_id}});
@@ -137,16 +149,32 @@ apiRoutes.post('/api/music_sources/location_playlist', asyncMiddleware(async (re
         else if (security)
 
     */
-    const sec = Math.round(req.body.location.system.security_status * 10) / 10;
-    console.log('checking status:', sec);
-    const playlists = await user.getPlaylistCriteria({
+
+    var playlists = await musicSource.getPlaylistCriteria({
         where: {
-            system_security: sec,
-            source_id: musicSource.id
+            region_id: req.body.location.region.region_id
         }
     });
 
-    res.json(playlists[0]);
+    if (playlists[0]) {
+        res.json(playlists[0]);
+        return;
+    }
+
+    const sec = Math.round(req.body.location.system.security_status * 10) / 10;
+
+    playlists = await musicSource.getPlaylistCriteria({
+        where: {
+            system_security: sec
+        }
+    });
+
+    if (playlists[0]) {
+        res.json(playlists[0]);
+        return;
+    }
+
+    res.status(404).send('No available playlists');
 
 }));
 

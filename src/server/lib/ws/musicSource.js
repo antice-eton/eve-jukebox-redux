@@ -5,118 +5,89 @@ const logger = get_logger();
 const appConfig = require('../../config.js');
 const _ = require('lodash');
 
-async function active_musicsource(sessionId) {
-
+async function refresh_musicsource(sessionId) {
     const state = getSessionData(sessionId);
+    const ws = state.ws_client;
 
-    if (state.new_musicsource === true) {
+    const musicSources = await state.user.getMusicSources({
+        where: {
+            id: state.user.active_musicsource_id
+        }
+    });
+
+    if (!musicSources[0]) {
+        state.refresh_user = true;
         return;
     }
 
-    state.new_musicsource = true
+    state.active_musicsource = musicSources[0];
+    state.active_musicsource_id = state.active_musicsource.id;
 
-    const ws = state.ws_client;
+    const model = new plugins[state.active_musicsource.model_name].model(state.active_musicsource, appConfig);
+    state.music_client = model;
 
-    if (!state.user) {
-        return false;
-    }
-
-    if (!state.active_musicsource_id) {
-        if (state.user.active_musicsource_id) {
-            state.active_musicsource_id = state.user.active_musicsource_id;
-        }  else {
-            logger.warn('No active character id');
-            return false;
+    ws.send(JSON.stringify({
+        message: 'active-musicsource',
+        data: {
+            musicsource_id: state.active_musicsource_id,
+            service_id: state.active_musicsource.service_id,
+            service_name: state.active_musicsource.service_name,
+            service_displayName: state.active_musicsource.service_displayName
         }
-    }
-
-    if (!state.active_musicsource || state.active_musicsource_id !== state.active_musicsource.id) {
-        logger.debug('Getting new music source instance setup for session:' + sessionId);
-
-        const user = state.user;
-        const musicSource = await user.getMusicSources({
-            where: {
-                id: state.active_musicsource_id
-
-            }
-        });
-
-        if (!musicSource[0]) {
-            state.new_musicsource = false;
-            logger.error("What the server thinks is the active music source id for this session is not aligned with what is in the database");
-            return;
-        }
-        state.active_musicsource = musicSource[0];
-        state.active_musicsource_id = musicSource[0].id;
-
-        const model = new plugins[musicSource[0].model_name].model(musicSource[0], appConfig);
-        state.music_client = model;
-
-        state.cached_data['music_client_status'] = null;
-        state.cached_data['music_client_currentPlaylist'] = null;
-        state.cached_data['music_client_currentPlaying'] = null;
-
-        state.previous_tick_data['music_client_status'] = null;
-        state.previous_tick_data['music_client_currentPlaylist'] = null;
-        state.previous_tick_data['music_client_currentPlaying'] = null;
-
-        ws.send(JSON.stringify({
-            message: 'musicsource_active',
-            data: musicSource[0]
-        }));
-    }
-    state.new_musicsource = false;
-    return state.active_musicsource;
+    }));
+    state.previous_tick_data['ms'] = {};
+    state.cached_data['ms'] = {};
+    state.refresh_active_musicsource = false;
 }
 
-async function get_music_client(sessionId) {
-    const state = getSessionData(sessionId);
-    const musicSource = await active_musicsource(sessionId);
-    if (!musicSource) {
-        return;
-    }
-
-    return state.music_client;
-}
-
-async function ms_status(sessionId) {
+async function tick(sessionId) {
     const state = getSessionData(sessionId);
     const ws = state.ws_client;
-    const client = await get_music_client(sessionId);
+
+    if (state.active_musicsource_id !== state.user.active_musicsource_id) {
+        state.refresh_active_musicsource = true;
+    }
+
+    if (state.refresh_active_musicsource) {
+        logger.debug('Reloading active musicsource');
+        await refresh_musicsource(sessionId);
+    }
+
+    await report_ms_status(sessionId);
+    await report_ms_nowplaying(sessionId);
+}
+
+async function report_ms_status(sessionId) {
+    const state = getSessionData(sessionId);
+    const ws = state.ws_client;
+    const client = state.music_client;
     if (!client) {
         return;
     }
-    const musicSource = await active_musicsource(sessionId);
-    if (!musicSource) {
-        return;
-    }
+
     const status = await client.status();
 
-    if (status !== state.previous_tick_data['music_client_status']) {
+    if (status !== state.previous_tick_data['ms']['music_client_status']) {
         ws.send(JSON.stringify({
             message: 'musicsource_status',
             data: status
         }));
-        state.previous_tick_data['music_client_status'] = status;
+        state.previous_tick_data['ms']['music_client_status'] = status;
     }
 }
 
-async function ms_nowplaying(sessionId) {
+async function report_ms_nowplaying(sessionId) {
     const state = getSessionData(sessionId);
     const ws = state.ws_client;
-    const client = await get_music_client(sessionId);
+    const client = state.music_client;
+
     if (!client) {
         return;
     }
-    const musicSource = await active_musicsource(sessionId);
-    if (!musicSource) {
-        return;
-    }
 
 
-
-    if (!state.previous_tick_data['music_client_nowPlaying']) {
-        state.previous_tick_data['music_client_nowPlaying'] = {};
+    if (!state.previous_tick_data['ms']['music_client_nowPlaying']) {
+        state.previous_tick_data['ms']['music_client_nowPlaying'] = {};
     }
 
     var sendmsg = false;
@@ -126,17 +97,17 @@ async function ms_nowplaying(sessionId) {
         currentPlaying = { playing: false };
     }
 
-    if (currentPlaying.playing !== state.previous_tick_data['music_client_nowPlaying']['playing']) {
+    if (currentPlaying.playing !== state.previous_tick_data['ms']['music_client_nowPlaying']['playing']) {
         sendmsg = true;
     }
 
-    if (currentPlaying.item_id !== state.previous_tick_data['music_client_nowPlaying']['item_id']) {
+    if (currentPlaying.item_id !== state.previous_tick_data['ms']['music_client_nowPlaying']['item_id']) {
         sendmsg = true;
     }
 
     if (sendmsg) {
 
-        state.previous_tick_data['music_client_nowPlaying'] = currentPlaying;
+        state.previous_tick_data['ms']['music_client_nowPlaying'] = currentPlaying;
 
         ws.send(JSON.stringify({
             message: 'musicsource_nowPlaying',
@@ -146,6 +117,7 @@ async function ms_nowplaying(sessionId) {
 }
 
 module.exports = {
-    ms_status,
-    ms_nowplaying
+    report_ms_status,
+    report_ms_nowplaying,
+    tick
 }
