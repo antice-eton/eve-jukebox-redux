@@ -1,17 +1,38 @@
 # EVE Jukebox Redux
 
-Back in the day, EVE Online had a jukebox of sorts.
+EVE Jukebox Redux is a tool that allows you to play music from different music sources, based on various in game criteria.
 
-EVE Jukebox Redux is what it could have been.
+This software is in ALPHA. Use at your own risk.
 
-THIS IS STILL IN VERY EARLY STAGES OF DEVELOPMENT
+## Supported Music Players
 
-## Features
+1. Foobar2000
+2. Spotify
 
-Configure playlists of music to play based on various conditions of where you are, such as which station, security status, sovereignty, or region.
+## Installation
 
-Have the Star Wars cantina play when you're docked in Jita 4-4. Why wouldn't you want do that?
+There is no official build yet. Nor are there install instructions.
 
-## Playlists from where?
+## FAQ
 
-First release will support Foobar2000 and Spotify. Youtube will be next. Additional services or players? Not sure. I'm guessing VLC support is feasible. As for other streaming services, I wrote this with plugins in mind so if anyone wants to contribute a plugin, reach out!
+### Can you support my favourite music player?
+
+While I don't plan to personally support every music player out there, the code is written in such a manner that adding new music players shouldn't be that difficult. Are you a programmer and want to contribute, please reach out. I am still figuring out a proper plugin spi.
+
+### Can I play a different playlist when I'm in battle?
+
+Not really. The only way to know if you're in a battle or not, is by monitoring the EVE client log files which can tell me when you're taking on damage. I can't tell when a battle is over though.
+
+In theory, one could start a battle playlist and assume that after some time of not receiving damage, switch back to a regular playlist.
+
+### I want a playlist for my sov space and I want to force everyone to listen to it
+
+This feature is planned for v2.0.0. Keep in mind though that playlists are tied to specific sources. Thus, if you setup a glorious sound track for your sov space in Spotify, and someone else using this tool is using Foobar, they won't hear your amazing musical tastes.
+
+### Can I build playlists using EVE Jukebox Redux?
+
+No. Build up playlists using your music player, then tell EVE Jukebox Redux which playlists to use.
+
+### I want a new feature!
+
+Feel free to open an issue describing the feature you want. Please keep in mind though that EVE Jukebox Redux is not a music player itself. It's really meant to be started and left in the background. 
