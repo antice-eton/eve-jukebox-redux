@@ -9,18 +9,18 @@ module.exports = async function() {
 
     logger.info('Setting up database');
     const orm = get_orm();
-    await orm.sync();
 
 
     logger.info('Setting up application');
     const app = get_app();
 
     const Session = require('express-session');
-    const SequelizeStore = require('connect-session-sequelize')(Session.Store);
-    const sessionStore = new SequelizeStore({
-        db: get_orm()
+    const KnexSessionStore = require('connect-session-knex')(Session);
+    const sessionStore = new KnexSessionStore({
+        knex: orm,
+        tablename: 'app_sessions',
+        createtable: true
     });
-    await sessionStore.sync();
 
     const expressWs = require('express-ws')(app);
     const wsController = require('../ws/controller.js');
@@ -39,6 +39,8 @@ module.exports = async function() {
     app.use(bodyParser.json());
 
     app.use(require('../routes/ejr/eve.js').routes);
-    app.use(require('../routes/ejr/music_sources.js').routes);
+    app.use(require('../routes/ejr/music_players.js').routes);
     app.use(require('../routes/ejr/session.js').routes);
+    app.use(require('../routes/ejr/plugins.js').routes);
+    app.use(require('../routes/ejr/playlists.js').routes);
 }

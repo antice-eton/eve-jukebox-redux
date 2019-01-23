@@ -25,6 +25,10 @@ Not really. The only way to know if you're in a battle or not, is by monitoring 
 
 In theory, one could start a battle playlist and assume that after some time of not receiving damage, switch back to a regular playlist.
 
+### How can I set a playlist for my Upwell structure?
+
+You can't. This is a limitation of EVE's API, there is little I can do about it as far as I'm aware.
+
 ### I want a playlist for my sov space and I want to force everyone to listen to it
 
 This feature is planned for v2.0.0. Keep in mind though that playlists are tied to specific sources. Thus, if you setup a glorious sound track for your sov space in Spotify, and someone else using this tool is using Foobar, they won't hear your amazing musical tastes.
@@ -35,4 +39,4 @@ No. Build up playlists using your music player, then tell EVE Jukebox Redux whic
 
 ### I want a new feature!
 
-Feel free to open an issue describing the feature you want. Please keep in mind though that EVE Jukebox Redux is not a music player itself. It's really meant to be started and left in the background. 
+Feel free to open an issue describing the feature you want. Please keep in mind though that EVE Jukebox Redux is not a music player itself. It's really meant to be started and left in the background.

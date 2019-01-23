@@ -1,9 +1,12 @@
 const fs = require('fs');
 const axios = require('axios');
-const Sequelize = require('sequelize');
 const express = require('express');
 const mkdirp = require('mkdirp');
 const winston = require('winston');
+
+
+const appConfig = require('./config.js');
+const knex = require('knex');
 
 var logger;
 function get_logger() {
@@ -35,8 +38,10 @@ function get_logger() {
 var orm;
 function get_orm() {
     if (!orm) {
-        orm = new Sequelize('postgresql://postgres:postgres@localhost:5432/eve-jukebox-redux', {
-            logging: false
+        orm = knex({
+            client: appConfig.database.client,
+            connection: appConfig.database.uri,
+            asyncStackTraces: true
         });
     }
 
@@ -49,6 +54,61 @@ function get_app() {
         app = express();
     }
     return app;
+}
+
+async function get_active_character(sessionId) {
+
+
+    const user = await get_session_user(sessionId);
+    if (!user) {
+        return null;
+    }
+
+    const characters = await user.getCharacters({
+        where: {
+            character_id: user.active_character_id
+        }
+    });
+
+    if (characters.length === 0) {
+        return null;
+    }
+
+    return characters[0];
+}
+
+async function get_active_musicplayer(sessionId) {
+    const user = await get_session_user(sessionId);
+    if (!user) {
+        return null;
+    }
+
+    const musicplayers = await user.getMusicPlayers({
+        where: {
+            id: user.active_musicplayer_id
+        }
+    });
+
+    if (musicplayers.length === 0) {
+        return null;
+    }
+
+    return musicplayers[0];
+}
+
+async function get_session_user(sessionId) {
+    const models = require('./models.js');
+
+    const user = await models.User.findOne({
+        where: {
+            session_id: sessionId
+        }
+    });
+
+    if (!user) {
+        return null;
+    }
+    return user;
 }
 
 async function spotify_sso_callback(accessToken, refreshToken, profile, done) {
@@ -124,5 +184,7 @@ async function eve_sso_callback(accessToken, refreshToken, profile, done) {
 module.exports = {
     get_orm: get_orm,
     get_app: get_app,
-    get_logger: get_logger
+    get_logger: get_logger,
+    get_active_character: get_active_character,
+    get_active_musicsource: get_active_musicplayer
 }

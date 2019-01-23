@@ -9,13 +9,15 @@ module.exports = async function() {
     const logger = get_logger();
     logger.info('BOOTSTRAP');
 
+    const bootstrapDb  = require('./lib/bootstrap/db.js');
     const bootstrapApp = require('./lib/bootstrap/app.js');
     const bootstrapEve = require('./lib/bootstrap/eve.js');
     const bootstrapSde = require('./lib/bootstrap/sde.js');
-    const bootstrapMs  = require('./lib/bootstrap/musicSources.js');
+    const bootstrapMp  = require('./lib/bootstrap/musicPlayers.js');
 
+    await bootstrapDb();
     await bootstrapApp();
-    await bootstrapMs();
+    await bootstrapMp();
     await bootstrapSde();
     await bootstrapEve();
 

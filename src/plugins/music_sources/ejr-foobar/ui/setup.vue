@@ -62,7 +62,7 @@ export default {
         testFoobar() {
             this.testing_foobar = true;
             this.foobar_error = false;
-            axios.post('/api/ms/foobar/test', {
+            axios.post('/api/mp/foobar/test', {
                 foobar_url: this.foobar_url,
                 foobar_username: this.foobar_username,
                 foobar_password: this.foobar_password
@@ -74,7 +74,7 @@ export default {
             })
             .then(() => {
                 if (!this.foobar_error) {
-                    return axios.post('/api/ms/foobar/install', {
+                    return axios.post('/api/mp/foobar/install', {
                         foobar_url: this.foobar_url,
                         foobar_username: this.foobar_username,
                         foobar_password: this.foobar_password
@@ -85,7 +85,7 @@ export default {
                         this.foobar_username = null;
                         this.foobar_password = null;
 
-                        this.$emit('source-added');
+                        this.$emit('player-added');
                     });
                 }
             });

@@ -37,7 +37,7 @@ export default {
     methods: {
         linkSpotify() {
             this.linking_spotify = true;
-            __auth_window = window.open('/api/ms/spotify/login', 'spotify_auth', 'menubar=no,location=no,resizable=no,scrollbars=yes,status=yes,toolbar=no,height=525,width=400');
+            __auth_window = window.open('/api/mp/spotify/login', 'spotify_auth', 'menubar=no,location=no,resizable=no,scrollbars=yes,status=yes,toolbar=no,height=525,width=400');
         },
 
         onRefreshSpotify() {
@@ -48,12 +48,16 @@ export default {
                 __auth_window.close();
             }
 
-            axios.get('/api/ms/spotify/user')
+            this.$emit('player-added');
+            /*
+
+            axios.get('/api/mp/spotify/user')
             .then((res) => {
                 this.spotify_user = res.data.user_displayName;
                 this.linking_spotify = false;
                 this.$emit('source-added');
             });
+            */
         }
     },
     beforeDestroy() {

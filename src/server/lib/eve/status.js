@@ -1,22 +1,52 @@
-const EveClient = require('./client.js');
+const utils = require('../../utils.js');
 
-class EveStatusClient extends EveClient {
-
-    constructor(character, config) {
-        super(character, config);
-    }
-
-    async online() {
+const StatusMethods = {
+    async online(character_id) {
         return this.request({
-            url: '/characters/' + this.character.character_id + '/online/'
+            url: '/characters/' + character_id + '/online/'
         });
-    }
+    },
 
-    async location() {
+    async location(character_id) {
         return this.request({
-            url: '/characters/' + this.character.character_id + '/location/'
+            url: '/characters/' + character_id + '/location/'
         });
-    }
-}
+    },
 
-module.exports = EveStatusClient
+    async character(character_id, session_id) {
+
+        const knex = utils.get_orm();
+
+        const where = {
+            character_id: character_id
+        };
+
+        if (session_id) {
+            where['session_id'] = session_id;
+        }
+
+        const characters = await knex.select(['id','character_id','character_name'])
+        .from('eve_characters')
+        .where(where);
+
+        return characters[0];
+    },
+
+    async characters(session_id) {
+        const knex = utils.get_orm();
+
+        const where = {};
+
+        if (session_id) {
+            where['session_id'] = session_id;
+        }
+
+        const characters = await knex.select(['id', 'character_id', 'character_name'])
+        .from('eve_characters')
+        .where(where);
+
+        return characters;
+    }
+};
+
+module.exports = StatusMethods;

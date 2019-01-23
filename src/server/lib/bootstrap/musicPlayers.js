@@ -19,7 +19,7 @@ module.exports = async function() {
         }
 
         if (musicSource['routes']) {
-            app.use(musicSource['routes']);
+            app.use('/api/mp', musicSource['routes']);
         }
     });
 }

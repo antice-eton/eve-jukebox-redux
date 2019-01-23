@@ -12,7 +12,7 @@ module.exports = async function() {
     const passport = require('passport');
     const EveOnlineStrategy = require('passport-eveonline-sso').Strategy;
 
-    const eve_sso_callback = require('../routes/ejr/eve.js').eve_sso_callback;
+    const eve_sso_callback = require('../eve/client.js').eve_sso_callback;
 
 /*
     passport.serializeUser(function(user, done) {
@@ -27,8 +27,8 @@ module.exports = async function() {
 */
 
     passport.use(new EveOnlineStrategy({
-        clientID: appConfig.eve.clientId,
-        clientSecret: appConfig.eve.clientSecret,
+        clientID: appConfig.eve.client_id,
+        clientSecret: appConfig.eve.client_secret,
         scope: appConfig.eve.scopes.join(' '),
         callbackURL: 'http://localhost:8080/api/eve/verify'
     }, eve_sso_callback));

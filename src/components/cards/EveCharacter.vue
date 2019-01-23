@@ -8,7 +8,7 @@
                     <v-flex xs3>
                         <v-progress-circular indeterminate v-if="loading_character"/>
                         <v-avatar size="100" v-else>
-                            <img :src="character_portrait">
+                            <img :src="'/api/eve/characters/' + character_id + '/portrait'">
                         </v-avatar>
                     </v-flex>
                     <v-flex class="ml-3" v-if="!loading_character">
@@ -30,6 +30,19 @@
                         </p>
                         <p v-else>
                             <v-icon small>power_off</v-icon> OFFLINE
+                        </p>
+
+                        <h4 class="text-uppercase font-weight-black">
+                            Selected Music Player
+                        </h4>
+                        <p v-if="loading_musicplayer">
+                            <v-progress-circular size="16" indeterminate/> LOADING
+                        </p>
+                        <p v-else-if="musicplayer_id === null">
+                            <v-icon small>music_note</v-icon> No player selected
+                        </p>
+                        <p v-else>
+                            <v-icon small>music_note</v-icon> {{ musicplayer_name }}
                         </p>
                     </v-flex>
                 </v-layout>
@@ -74,10 +87,18 @@
         </v-layout>
     </v-card-text>
     <v-card-actions class="grey darken-4">
-        <v-btn @click="manage_characters = true"><v-icon class="mr-2">settings</v-icon> Manage Characters</v-btn>
+        <v-btn @click="loadCharactersCard"><v-icon class="mr-2">account_box</v-icon> Select Character</v-btn>
+        <v-btn @click="loadMusicPlayersCard"><v-icon class="mr-2">music_note</v-icon> Select Music Player</v-btn>
+        <v-btn @click="loadPlaylistsCard"><v-icon class="mr-2">list</v-icon> Playlist Rules</v-btn>
     </v-card-actions>
     <v-dialog v-model="manage_characters" max-width="500">
-        <EveCharactersCard @cancel="manage_characters = false"/>
+        <EveCharactersCard @cancel="manage_characters = false" ref="eve-characters-card"/>
+    </v-dialog>
+    <v-dialog v-model="manage_musicplayers" max-width="500">
+        <MusicPlayersCard @cancel="manage_musicplayers = false" ref="music-players-card"/>
+    </v-dialog>
+    <v-dialog v-model="manage_playlists" max-width="1024">
+        <PlaylistsCard @cancel="manage_playlists = false; " ref="playlists-card"/>
     </v-dialog>
 </v-card>
 </template>
@@ -85,17 +106,30 @@
 <script>
 
 import EveCharactersCard from './EveCharacters.vue';
+import MusicPlayersCard from './MusicPlayers.vue';
+import PlaylistsCard from './Playlists.vue';
+
 import _ from 'lodash';
+import axios from 'axios';
 
 export default {
 
     components: {
-        EveCharactersCard
+        EveCharactersCard,
+        MusicPlayersCard,
+        PlaylistsCard
     },
 
     data() {
         return {
-            manage_characters: false
+            manage_characters: false,
+            manage_musicplayers: false,
+            manage_playlists: false,
+            loading_character: true,
+            loading_musicplayer: false,
+            character_name: null,
+            musicplayer_name: null,
+            music_player: null
         }
     },
 
@@ -104,12 +138,12 @@ export default {
             return this.$store.state.active_character_id;
         },
 
-        character_name() {
-            return this.$store.state.active_character_name;
+        musicplayer_id() {
+            return this.$store.state.active_musicplayer_id;
         },
 
-        character_portrait() {
-            return '/portraits/' + this.character_id + '_512.jpg';
+        socket_connected() {
+            return this.$store.state.socket_connected;
         },
 
         character() {
@@ -124,16 +158,86 @@ export default {
             return this.$store.state.location;
         },
 
-        loading_online() {
-            return (this.$store.state.loading_online || this.$store.state.socket_connected === false);
-        },
-
         loading_location() {
             return (this.$store.state.loading_location || this.$store.state.socket_connected === false);
         },
 
-        loading_character() {
-            return (this.$store.state.loading_character || this.$store.state.socket_connected === false);
+        loading_online() {
+            return (this.$store.state.loading_online || this.$store.state.socket_connected === false);
+        }
+    },
+
+    watch: {
+        character_id(newVal) {
+            if (newVal) {
+                this.loadCharacter(newVal);
+            }
+        },
+
+        musicplayer_id(newVal) {
+            console.log('musicplayer id:', newVal);
+            if (newVal) {
+                this.loadMusicPlayer(newVal);
+            }
+        }
+    },
+
+    methods: {
+
+        async loadCharactersCard() {
+            this.$refs['eve-characters-card'].loadCharacters();
+            this.manage_characters = true;
+        },
+
+        async loadMusicPlayersCard() {
+            this.$refs['music-players-card'].refreshPlayers();
+            this.manage_musicplayers = true;
+        },
+
+        async loadPlaylistsCard() {
+            this.$refs['playlists-card'].reload();
+            this.manage_playlists = true;
+        },
+
+        async loadMusicPlayer(player_id) {
+            const res = await axios.get('/api/music_players/' + player_id);
+            this.musicplayer_name = res.data.service_displayName;
+        },
+
+        async loadCharacter(character_id) {
+            this.loading_character = true;
+            if (!this.socket_connected) {
+                console.log('Connecting to WS');
+                this.$connect();
+            }
+
+            return axios.get('/api/eve/characters/' + character_id)
+            .then((res) => {
+                this.character_name = res.data.character_name
+                this.loading_character = false;
+                var timer = setInterval(() => {
+                    if (this.socket_connected) {
+                        this.$socket.send(JSON.stringify({message: 'reload'}));
+                        clearInterval(timer);
+                    }
+                }, 1000);
+                // this.$socket.send(JSON.stringify({message: 'reload'}));
+            });
+        },
+    },
+
+    beforeDestroy() {
+        console.log('Disconnecting websocket');
+        this.$disconnect();
+    },
+
+    created() {
+        if (this.character_id) {
+            this.loadCharacter(this.character_id);
+        }
+
+        if (this.musicplayer_id) {
+            this.loadMusicPlayer(this.musicplayer_id);
         }
     }
 }

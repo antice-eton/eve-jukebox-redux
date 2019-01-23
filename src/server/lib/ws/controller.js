@@ -1,122 +1,163 @@
 const get_logger = require('../../utils.js').get_logger;
+const knex = require('../../utils.js').get_orm();
 const logger = get_logger();
-const getSessionData = require('./sessionState.js').get_state;
-const getSessionState = require('./sessionState.js').get_session_state;
-const models = require('../../models.js');
 
 const eveFuncs = require('./eve.js');
+const EveClient = require('../eve/client.js');
+const appConfig = require('../../config.js');
 
-const msFuncs = require('./musicSource.js');
+// const msFuncs = require('./musicSource.js');
 
-function startSubscription(sessionId) {
-    const state = getSessionData(sessionId);
-
-    if (!state.timer) {
-        state.timer = setInterval(tickWrapper.bind(null, sessionId), 1000);
-    } else {
-        clearInterval(state.timer);
-        state.timer = setInterval(tickWrapper.bind(null, sessionId), 1000);
+class ClientController {
+    constructor(session_id, ws) {
+        this.session_id = session_id;
+        this.timer = null;
+        this.tick_counter = 0;
+        this.ticking = false;
+        this.ws = ws;
+        this.character = null;
+        this.cache = {};
+        this.eve = null;
+        this.reload = false;
+        this.stopped = false;
     }
-    state.tick_counter = 0;
+
+    start() {
+        this.stopped = false;
+        this.timer = setInterval(() => { this.tickWrapper(); }, 1000);
+    }
+
+    stop() {
+        clearInterval(this.timer);
+        this.stopped = true;
+    }
+
+    async tickWrapper() {
+        if (this.ticking === true) {
+            return;
+        }
+
+        if (this.stopped === true) {
+            logger.warn('[WS] Client stopped but still ticking');
+            clearInterval(this.timer);
+            return;
+        }
+
+        this.ticking = true;
+
+        if (this.ws.readyState === 3) {
+            this.stop();
+            return;
+        }
+
+        try {
+            await this.tick();
+            this.ticking = false;
+        } catch (e) {
+            logger.error('Unhandled error from tick');
+            console.error(e);
+        }
+    }
+
+    async tick() {
+
+        if (!this.character || this.reload === true) {
+            const session_user = await knex.select('*').from('session_users').where({
+                session_id: this.session_id
+            });
+
+            if (!session_user[0]) {
+                console.error('Websocket connected but there is no session user!');
+                return;
+            }
+
+            if (!session_user[0].active_character_id) {
+                console.warn('No active character id for websocket session');
+                return;
+            }
+
+            const character = await knex.select('*').from('eve_characters').where({
+                character_id: session_user[0].active_character_id
+            });
+
+            if (character.length === 0) {
+                console.warn('Active character not found');
+                return;
+            }
+
+            this.character = character[0];
+            this.eve = EveClient({
+                ...appConfig.eve,
+                access_token: this.character.access_token,
+                refresh_token: this.character.refresh_token,
+                character_id: this.character.character_id
+            });
+
+            this.reload = false;
+        }
+
+        return Promise.all([
+            eveFuncs.tick(this),
+            //msFuncs.tick(sessionId)
+        ])
+        .catch((e) => {
+            logger.error('Unhandled error from a tick function');
+            console.error(e);
+        });
+    }
 }
 
+const controllers = {};
+
 function disconnect(sessionId) {
+
     logger.info('[WS] Disconnecting session: ' + sessionId);
-    const state = getSessionData(sessionId);
 
-    if (state.timer) {
-        clearInterval(state.timer);
+    if (controllers[sessionId]) {
+        controllers[sessionId].stop();
+        delete controllers[sessionId];
     }
-
-    require('./sessionState.js').delete_state(sessionId);
-
-    //require('./sessionState.js').delete_state(sessionId);
 }
 
 function connect(ws, req) {
 
+
+
     try {
+        logger.debug('New WS Connection');
 
         const cookies = require('cookie').parse(req.headers['cookie']);
         const sessionId = cookies['connect.sid'].split('.')[0].split(':')[1];
 
+        ws.on('close', () => {
+            disconnect(sessionId);
+        });
+
+        ws.on('message', (msg) => {
+            const message = JSON.parse(msg);
+
+            if (message.message == 'reload') {
+                logger.debug('[WS] Got a reload command!');
+                if (controllers[sessionId]) {
+                    controllers[sessionId].reload = true;
+                }
+            }
+        });
+
         logger.info('[WS] Connecting session:' + sessionId);
 
-        const state = getSessionData(sessionId);
-        state.ws_client = ws;
-        state.refresh_user = true;
-        
-        startSubscription(sessionId);
+        if (controllers[sessionId]) {
+            logger.info('[WS] Session already has a client');
+            controllers[sessionId].reload = true;
+        }  else {
+            logger.info('[WS] Creating new client for session');
+            controllers[sessionId] = new ClientController(sessionId, ws);
+            controllers[sessionId].start();
+        }
     } catch (err) {
         logger.error('[WS] wsClient::connect() - error');
         console.error(err);
     }
-}
-
-function tickWrapper(sessionId) {
-    const state = getSessionData(sessionId);
-    if (state.ticking === true) {
-        return;
-    }
-
-    state.ticking = true;
-
-    if (state.ws_client.readyState === 3) {
-        disconnect(sessionId);
-        return;
-    }
-
-    tick(sessionId)
-    .then(() => {
-        state.tick_counter++;
-        if (state.tick_counter === 60) {
-            state.tick_counter = 0;
-        }
-        state.ticking = false;
-    })
-    .catch((err) => {
-        if (state.ws_client && state.ws_client.readyState === 1) {
-            state.ws_client.send(JSON.stringify({
-                message: 'ERROR'
-            }));
-        }
-
-        logger.error('[WS] Unhandled error:');
-        console.error(err);
-        state.ticking = false;
-    });
-}
-
-async function tick(sessionId) {
-    const state = getSessionData(sessionId);
-
-    if (!state.user || state.refresh_user === true) {
-        logger.debug('[WS] Reloading user data');
-        const user = await models.User.findOne({
-            where: {
-                session_id: sessionId
-            }
-        });
-
-        if (!user) {
-            return;
-        }
-        state.user = user;
-        state.refresh_user = false;
-    }
-
-    if (state.tick_counter % 10 === 0) {
-        if (state.refresh_user) {
-
-            await state.user.reload();
-        }
-    }
-
-    return Promise.all([
-        eveFuncs.tick(sessionId),
-        msFuncs.tick(sessionId)
-    ]);
-
 }
 
 module.exports = {

@@ -2,28 +2,34 @@ const express = require('express');
 const apiRoutes = express.Router();
 const axios = require('axios');
 
-const User = require('../../../../server/models.js').User;
-const MusicSource = require('../../../../server/models.js').MusicSource;
+const knex = require('../../../../server/utils.js').get_orm();
 
 const asyncMiddleware = require('../../../../server/lib/routes/routeUtils.js').asyncMiddleware;
 
-apiRoutes.post('/api/ms/foobar/install', asyncMiddleware(async (req, res, next) => {
-    const user = await User.findOne({where: { session_id: req.session.id }});
+apiRoutes.post('/foobar/install', asyncMiddleware(async (req, res, next) => {
 
-    const musicSource = await MusicSource.create({
-        model_name: 'foobar',
+    const character_id = req.session.character_id;
+
+    if (!character_id) {
+        res.status(403).send('No character id for the session');
+        return;
+    }
+
+    const music_player = {
+        client_name: 'foobar',
         service_id: 'foobar',
-        service_name: 'Foobar',
+        service_name: 'foobar',
         service_displayName: 'Foobar',
-        configuration: req.body
-    });
+        configuration: JSON.stringify(req.body),
+        character_id: character_id
+    };
 
-    await user.addMusicSource(musicSource);
+    await knex('music_players').insert(music_player);
 
     res.json({ok: true});
 }));
 
-apiRoutes.post('/api/ms/foobar/test', asyncMiddleware(async (req, res, next) => {
+apiRoutes.post('/foobar/test', asyncMiddleware(async (req, res, next) => {
 
     const testUrl = req.body.foobar_url + '/api/playlists';
 

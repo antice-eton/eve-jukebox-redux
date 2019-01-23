@@ -5,7 +5,7 @@ const orm = require('./utils.js').get_orm();
 var User = orm.define('user', {
     session_id: Seq.STRING,
     active_character_id: Seq.INTEGER,
-    active_musicsource_id: Seq.INTEGER
+    active_musicplayer_id: Seq.INTEGER
 },{
     indexes: [{
         unique: true,
@@ -29,12 +29,6 @@ var Character = orm.define('character', {
     },{
         unique: true,
         fields: ['character_name']
-    },{
-        unique: true,
-        fields: ['access_token']
-    },{
-        unique: true,
-        fields: ['refresh_token']
     }]
 });
 
@@ -53,27 +47,33 @@ var EveName = orm.define('eveName', {
     }]
 });
 
-var MusicSource = orm.define('musicSource', {
-    model_name: Seq.STRING,
+var MusicPlayer = orm.define('musicPlayer', {
+    client_name: Seq.STRING,
     service_id: Seq.STRING,
     service_name: Seq.STRING,
     service_displayName: Seq.STRING,
     configuration: Seq.JSON
 });
-User.hasMany(MusicSource);
-MusicSource.belongsTo(User);
+User.hasMany(MusicPlayer);
+MusicPlayer.belongsTo(User);
+
+var MusicPlayerConfiguration = orm.define('musicPlayerConfiguration', {
+    configuration: Seq.JSON
+});
+MusicPlayerConfiguration.belongsTo(MusicPlayer);
 
 var PlaylistCriteria = orm.define('playlistCriteria', {
     playlist_id: Seq.STRING,
     playlist_name: Seq.STRING,
+    character_id: Seq.INTEGER,
     source_id: Seq.INTEGER,
     system_security: Seq.FLOAT,
     region_id: Seq.INTEGER
 });
-User.hasMany(PlaylistCriteria);
-MusicSource.hasMany(PlaylistCriteria);
-PlaylistCriteria.belongsTo(User);
-PlaylistCriteria.belongsTo(MusicSource);
+Character.hasMany(PlaylistCriteria);
+MusicPlayer.hasMany(PlaylistCriteria);
+PlaylistCriteria.belongsTo(MusicPlayer);
+PlaylistCriteria.belongsTo(Character);
 
 
 var EveRegion = orm.define('region', {
@@ -157,7 +157,8 @@ EveStation = orm.define('station', {
 const models = {
     User,
     Character,
-    MusicSource,
+    MusicPlayer,
+    MusicPlayerConfiguration,
     EveRegion,
     EveConstellation,
     EveSystem,

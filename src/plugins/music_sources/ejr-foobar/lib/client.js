@@ -1,11 +1,12 @@
 const axios = require('axios');
 const logger = require('../../../../server/utils.js').get_logger();
 
-class FoobarModel {
-    constructor(source, appConfig) {
-        this.source = source;
-        this.options = this.source.configuration;
-        this.appConfig = appConfig;
+class FoobarClient {
+
+    constructor(config) {
+        this.foobar_url = config.foobar_url;
+        this.foobar_username = config.foobar_username;
+        this.foobar_password = config.foobar_password;
     }
 
 
@@ -13,12 +14,12 @@ class FoobarModel {
 
         const newOptions = Object.assign({}, options);
 
-        newOptions['url'] = this.options.foobar_url + options['url'];
+        newOptions['url'] = this.foobar_url + options['url'];
 
-        if (this.options.foobar_username) {
+        if (this.foobar_username) {
             newOptions['auth'] = {
-                username: this.options.foobar_username,
-                password: this.options.foobar_password
+                username: this.foobar_username,
+                password: this.foobar_password
             }
         }
 
@@ -131,4 +132,4 @@ class FoobarModel {
     }
 }
 
-module.exports = FoobarModel;
+module.exports = FoobarClient;

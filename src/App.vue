@@ -1,51 +1,54 @@
 <template>
 <v-app id="ejr" dark>
-    <v-content v-if="loading_status">
-        <v-container fluid>
-            <v-layout justify-center>
-                <v-flex xs12 sm8 md4>
-                    <v-card class="elevation-13">
-                        <v-card-title class="elevation-3">
-                            Loading ...
-                        </v-card-title>
-                        <v-card-text>
-                            <v-progress-circular indeterminate x-large v-if="loading"/>
-                            <template v-else-if="loading_error">
-                                <h4 class="red--text text--darken-4">ERROR</h4>
-                                <div class="red--text">{{ loading_error_msg }} {{ retry_count }}</div>
-                                <div>Retrying in {{ retry_count }} second(s).</div>
-                            </template>
-                        </v-card-text>
-                    </v-card>
-                </v-flex>
-            </v-layout>
-        </v-container>
-    </v-content>
-    <v-content v-else-if="no_active_characters">
-        <v-container fluid>
-            <v-layout justify-center>
-                <v-flex xs12 sm8 md6>
-                    <EveCharactersCard @cancel="refreshStatus"/>
-                </v-flex>
-            </v-layout>
-        </v-container>
-    </v-content>
-    <v-content v-else>
-        <v-container fluid>
-            <v-layout wrap>
-                <v-flex xs12>
-                    <h1 class="mb-1 display-1">EVE Jukebox Redux</h1>
-                </v-flex>
-                <v-flex xs12>
-                    <EveCharacterCard/>
-                </v-flex>
-                <v-flex xs12 class="mt-4">
-                    <MusicCard/>
-                </v-flex>
-            </v-layout>
-        </v-container>
-    </v-content>
-
+    <transition name="slide-fade">
+        <v-content v-if="loading" key="loading_screen">
+            <v-container fluid>
+                <v-layout justify-center>
+                    <v-flex xs12 sm8 md4>
+                        <v-card class="elevation-13">
+                            <v-card-title class="elevation-3">
+                                Loading ...
+                            </v-card-title>
+                            <v-card-text>
+                                <v-progress-circular indeterminate x-large v-if="loading"/>
+                                <template v-else-if="loading_error">
+                                    <h4 class="red--text text--darken-4">ERROR</h4>
+                                    <div class="red--text">{{ loading_error_msg }} {{ retry_count }}</div>
+                                    <div>Retrying in {{ retry_count }} second(s).</div>
+                                </template>
+                            </v-card-text>
+                        </v-card>
+                    </v-flex>
+                </v-layout>
+            </v-container>
+        </v-content>
+        <v-content v-else-if="active_character_id === null" key="characters">
+            <v-container fluid>
+                <v-layout justify-center>
+                    <v-flex xs12 sm8 md6>
+                        <EveCharactersCard @cancel="refreshStatus"/>
+                    </v-flex>
+                </v-layout>
+            </v-container>
+        </v-content>
+        <v-content v-else key="character">
+            <v-container fluid>
+                <v-layout wrap>
+                    <v-flex xs12>
+                        <h1 class="mb-1 display-1">EVE Jukebox Redux</h1>
+                    </v-flex>
+                    <v-flex xs12>
+                        <EveCharacterCard/>
+                    </v-flex>
+                    <!--
+                    <v-flex xs12 class="mt-4">
+                        <MusicCard/>
+                    </v-flex>
+                    -->
+                </v-layout>
+            </v-container>
+        </v-content>
+    </transition>
     <!--
     <transition name="fade">
         <router-view v-if="loading === false"/>
@@ -56,10 +59,17 @@
 
 <style lang="scss">
 @import './sass/fonts.scss';
-.fade-enter-active, .fade-leave-active {
-  transition: opacity .5s;
+/* Enter and leave animations can use different */
+/* durations and timing functions.              */
+.slide-fade-enter-active {
+  transition: all .3s ease;
 }
-.fade-enter, .fade-leave-to /* .fade-leave-active below version 2.1.8 */ {
+.slide-fade-leave-active {
+  transition: all .8s cubic-bezier(1.0, 0.5, 0.8, 1.0);
+}
+.slide-fade-enter, .slide-fade-leave-to
+/* .slide-fade-leave-active below version 2.1.8 */ {
+  transform: translateX(10px);
   opacity: 0;
 }
 </style>
@@ -67,7 +77,7 @@
 import axios from 'axios';
 import EveCharactersCard from './components/cards/EveCharacters.vue';
 import EveCharacterCard from './components/cards/EveCharacter.vue';
-import MusicCard from './components/cards/MusicSource.vue';
+// import MusicCard from './components/cards/MusicSource.vue';
 //import Main from './views/Main.vue';
 
 //import Toolbar from './components/AppToolbar.vue';
@@ -78,8 +88,7 @@ export default {
 
     components: {
         EveCharactersCard,
-        EveCharacterCard,
-        MusicCard
+        EveCharacterCard
     },
 
     data() {
@@ -117,10 +126,10 @@ export default {
 
         active_character_id(char) {
             if (char) {
-                this.$connect();
+                //his.$connect();
                 this.no_active_characters = false;
             } else {
-                this.$disconnect();
+                //this.$disconnect();
                 this.no_active_characters = true;
             }
         }
@@ -139,15 +148,23 @@ export default {
                     return;
                 }
                 this.retry_count--;
-                setTimeout(() => {
-                    this.refreshTicker();
+                setTimeout(async () => {
+                    await this.refreshTicker();
                 }, 1000);
             }
         },
 
         async refreshStatus() {
-            this.loading_status = true;
             this.loading = true;
+
+            return axios.get('/api/session/status')
+            .then((res) => {
+                const session = res.data;
+                this.$store.commit('ACTIVATE_CHARACTER_ID', session.active_character_id);
+                this.$store.commit('ACTIVATE_MUSICPLAYER_ID', session.active_musicplayer_id);
+                this.loading = false;
+            });
+            /*
 
 
 
@@ -184,15 +201,17 @@ export default {
                     this.refreshTicker();
                 }
             });
+
+            */
         }
     },
 
     beforeDestroy() {
-        this.$disconnect();
+        //this.$disconnect();
     },
 
     mounted() {
-        this.$connect();
+        //this.$connect();
         this.refreshStatus();
     }
 }

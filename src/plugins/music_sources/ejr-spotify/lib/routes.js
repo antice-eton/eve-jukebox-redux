@@ -3,31 +3,49 @@ const apiRoutes = express.Router();
 
 const passport = require('passport');
 
-const User = require('../../../../server/models.js').User;
-const MusicSource = require('../../../../server/models.js').MusicSource;
-
 const asyncMiddleware = require('../../../../server/lib/routes/routeUtils.js').asyncMiddleware;
+const utils = require('../../../../server/utils.js');
 
-apiRoutes.get('/api/ms/spotify/status', asyncMiddleware(async (req, res, next) => {
+apiRoutes.get('/spotify/status', asyncMiddleware(async (req, res, next) => {
     const user = await User.findOne({where: {session_id: req.session.id}});
 }));
 
-apiRoutes.get('/api/ms/spotify/verify',
-    passport.authenticate('spotify', {failureRedirect: '/api/ms/spotify/verify-error', session: false}),
+apiRoutes.get('/spotify/verify',
+    passport.authenticate('spotify', {failureRedirect: '/api/mp/spotify/verify-error', session: false}),
     asyncMiddleware(async function(req, res, next) {
         console.log('[ESC] Post Spotify SSO Callback, character name: ', req.user);
 
-        const user = await User.findOne({where: { session_id: req.session.id }});
+        if (!req.session.character_id) {
+            res.status(403).send(`
+            <html><body><script>
+                var spotifyEvent = new CustomEvent('spotify-error', {
+                    detail: {
+                        message: 'No session character id'
+                    }
+                });
 
-        const musicSource = await MusicSource.create({
-            model_name: 'spotify',
+                window.opener.document.dispatchEvent(spotifyEvent);
+            </script></body></html>
+            `);
+            return;
+        }
+
+        const spotify_config = {
+            displayName: req.user.displayName,
+            access_token: req.user.tokens.access,
+            refresh_token: req.user.tokens.refresh,
+            id: req.user.id
+        }
+
+        await utils.get_orm()
+        .insert({
+            client_name: 'spotify',
             service_id: 'spotify',
             service_name: 'Spotify',
-            service_displayName: 'Spotify - ' + req.user.username,
-            configuration: req.user
-        });
-
-        await user.addMusicSource(musicSource);
+            service_displayName: 'Spotify',
+            configuration: JSON.stringify(spotify_config),
+            character_id: req.session.character_id
+        }).into('music_players');
 
         res.send(`
         <html><body><script>
@@ -43,20 +61,15 @@ apiRoutes.get('/api/ms/spotify/verify',
     })
 );
 
-apiRoutes.get('/api/ms/spotify/user', asyncMiddleware(async (req, res, next) => {
-    const user = await User.findOne({where: {session_id: req.session.id}});
-    res.json(user);
-}));
-
-apiRoutes.get('/api/ms/spotify/login',
-    passport.authenticate('spotify', {failureRedirect: '/api/ms/spotify/login-error', session: false, showDialog: true})
+apiRoutes.get('/spotify/login',
+    passport.authenticate('spotify', {failureRedirect: '/api/mp/spotify/login-error', session: false, showDialog: true})
 );
 
-apiRoutes.get('/api/ms/spotify/login-error', (req, res) => {
+apiRoutes.get('/spotify/login-error', (req, res) => {
     res.status(500).send('Spotify login error');
 });
 
-apiRoutes.get('/api/ms/spotify/verify-error', (req, res) => {
+apiRoutes.get('/spotify/verify-error', (req, res) => {
     res.status(500).send('Spotify verify error');
 });
 

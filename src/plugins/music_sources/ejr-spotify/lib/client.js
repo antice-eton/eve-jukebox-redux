@@ -1,27 +1,73 @@
 const axios = require('axios');
 const qs = require('qs');
-const logging = require('../../../../server/utils.js').get_logger();
+const utils = require('../../../../server/utils.js');
+const logger = utils.get_logger();
 
-class SpotifyModel {
-    constructor(musicSource, appConfig) {
+class SpotifyClient {
+    constructor(config) {
 
-        this.source = musicSource;
-        this.options = this.source.configuration;
-        this.appConfig = appConfig;
+        /**
+        config:
+            api_url,
+            token_url,
+            refresh_token,
+            access_token,
+            client_id,
+            client_secret,
+            source_id
+        */
+
+        this.api_url = config.api_url;
+        this.token_url = config.token_url;
+        this.refresh_token = config.refresh_token;
+        this.access_token = config.access_token;
+        this.client_id = config.client_id;
+        this.client_secret = config.client_secret;
+        this.player_id = config.player_id;
+
         this.cache = {};
+    }
+
+    async _refresh_tokens() {
+        const res = await axios({
+            url: this.token_url,
+            method: 'POST',
+            data: qs.stringify({ grant_type: 'refresh_token', refresh_token: this.refresh_token }),
+            headers: {
+                'Content-type': 'application/x-www-form-urlencoded',
+                'Authorization': 'Basic ' + Buffer.from(this.client_id + ':' + this.client_secret).toString('base64')
+            }
+        });
+
+        this.access_token = res.data.access_token;
+
+        const knex = utils.get_orm();
+
+        const music_player = await knex.select('id', 'configuration').from('music_players').where({
+            id: this.player_id
+        });
+
+        const mp_config = music_player[0].configuration;
+        mp_config['access_token'] = this.access_token;
+
+        await knex('music_players').where({
+            id: this.player_id
+        }).update({
+            configuration: JSON.stringify(mp_config)
+        });
     }
 
     async _req(options, stopRetry) {
 
         const newOptions = Object.assign({}, options);
 
-        newOptions['url'] = this.appConfig['spotify']['apiUrl'] + options['url'];
+        newOptions['url'] = this.api_url + options['url'];
 
         if (!newOptions['headers']) {
             newOptions['headers'] = {}
         }
 
-        newOptions['headers']['Authorization'] = 'Bearer ' + this.options.tokens.access;
+        newOptions['headers']['Authorization'] = 'Bearer ' + this.access_token;
 
         if (this.cache[newOptions['url']]) {
             if (Date.now() <= this.cache[newOptions['url']].expires) {
@@ -31,53 +77,42 @@ class SpotifyModel {
             }
         }
 
-        logging.info('Spotify request: ' + newOptions['url']);
+        logger.debug('Spotify request: ' + newOptions['url']);
 
-        return axios(newOptions)
-        .then((res) => {
+        try {
+            const res = await axios(newOptions);
+
             this.cache[newOptions['url']] = {
                 expires: Date.now() + 5000,
                 data: res.data
-            }
+            };
+
             return res.data;
-        })
-        .catch(async (err) => {
-            if (err.response && err.response.status === 401) {
+        } catch (e) {
+            if (e.response && e.response.status === 401) {
                 if (stopRetry === true) {
-                    throw err;
+                    logger.error('Unable to refresh spotify tokens: ' + e.response.data);
+                    throw new Error('Unable to refresh spotify tokens.');
                 }
 
-                console.log('[ESC] Spotify token has expired, try refreshing');
+                logger.warn('Refreshing spotify tokens');
 
-                return axios({
-                    url: this.appConfig.spotify.tokenUrl,
-                    method: 'POST',
-                    data: qs.stringify({ grant_type: 'refresh_token', refresh_token: this.options.tokens.refresh }),
-                    headers: {
-                        'Content-type': 'application/x-www-form-urlencoded',
-                        'Authorization': 'Basic ' + Buffer.from(this.appConfig.spotify.clientId + ':' + this.appConfig.spotify.clientSecret).toString('base64')
+                try {
+                    await this._refresh_tokens();
+                    return this._req(options, true);
+                } catch (e) {
+                    if (e.response) {
+                        logger.error('Error getting new spotify oauth tokens:');
+                        logger.error(e.response.data);
+                        throw new Error('Error getting new spotify oauth tokens');
+                    } else {
+                        throw e;
                     }
-                })
-                .then(async (res) => {
-
-                    console.log('[ESC] Spotify tokens refreshed');
-
-                    this.source.configuration.tokens.access = res.data.access_token;
-                    await this.source.save();
-
-                    this.options = this.source.configuration;
-
-                    console.log('[ESC] Retrying request');
-                    return this._req(options, true)
-                    .then((res) => {
-                        return res;
-                    });
-                });
-                console.log('[ESC] Error talking to spotify');
-                console.log(err.response);
+                }
+            } else {
+                throw e;
             }
-            throw err;
-        });
+        }
     }
 
     async playlists() {
@@ -174,4 +209,4 @@ class SpotifyModel {
     }
 }
 
-module.exports = SpotifyModel;
+module.exports = SpotifyClient;

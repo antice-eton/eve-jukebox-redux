@@ -23,6 +23,7 @@ export default new Vuex.Store({
 
         loading_character: true,
         active_character_id: null,
+        active_musicplayer_id: null,
         active_character_name: null,
 
         active_musicsource: {
@@ -134,6 +135,14 @@ export default new Vuex.Store({
             state.online = null;
         },
 
+        ACTIVATE_MUSICPLAYER_ID(state, playerId) {
+            state.active_musicplayer_id = playerId;
+        },
+
+        DEACTIVATE_CHARACTER_ID(state) {
+            state.active_character_id = null;
+        },
+
         ACTIVATE_CHARACTER(state, character) {
             state.active_character_id = character.character_id;
             state.active_character_name = character.character_name;
@@ -159,17 +168,16 @@ export default new Vuex.Store({
 
     actions: {
         async activate_character(context, characterId) {
-            context.commit('LOADING_CHARACTER');
-
-            await axios.post('/api/eve/active_character', {
+            return axios.post('/api/session/activate_character', {
                 character_id: characterId
+            })
+            .then(() => {
+                context.commit('ACTIVATE_CHARACTER_ID', characterId);
             });
         },
 
-        async activate_musicsource(context, sourceId) {
-            context.commit('LOADING_MUSICSOURCE');
-
-            return await axios.post('/api/music_sources/linked/' + sourceId + '/activate');
+        async activate_musicplayer(context, sourceId) {
+            context.commit('ACTIVATE_MUSICPLAYER_ID', sourceId);
         }
     }
 });

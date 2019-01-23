@@ -12,4 +12,5 @@ bootstrap()
 .catch((err) => {
     get_logger().error('---- BOOTSTRAP ERROR !!');
     console.error(err);
+    process.exit(1);
 });
