@@ -1,8 +1,8 @@
 <template>
 <v-card>
-    <v-card-title>Edit Rule</v-card-title>
+    <v-card-title>Edit Criteria</v-card-title>
     <v-card-text>
-        <v-select label="Select Rule Type" :items="rule_types" v-model="selected_rule_type"/>
+        <v-select label="Criteria Type" :items="criteria_types" v-model="criteria_type"/>
 
         <AutoComplete
             item-key="regions"
@@ -10,9 +10,9 @@
             item-value="region_id"
             url="/api/eve/regions"
             label="Type region name"
-            v-model="selected_rule_criteria"
+            v-model="criteria"
             :key="'region_select'"
-            v-if="selected_rule_type === 'region'"/>
+            v-if="criteria_type === 'region'"/>
 
         <AutoComplete
             item-key="systems"
@@ -20,21 +20,23 @@
             item-value="system_id"
             url="/api/eve/systems"
             label="Type system name"
-            v-model="selected_rule_criteria"
+            v-model="criteria"
             :key="'system_select'"
-            v-else-if="selected_rule_type === 'system'"/>
+            v-else-if="criteria_type === 'system'"/>
 
         <v-select
             :items="system_securities"
             label="Choose a System Security Level"
-            v-model="selected_rule_criteria"
+            v-model="criteria"
             :key="'system_sec_select'"
-            v-else-if="selected_rule_type === 'system_security'"/>
+            v-else-if="criteria_type === 'system_security'"/>
 
+        <StationCriteria v-model="criteria" v-else-if="criteria_type === 'station'"/>
 
     </v-card-text>
     <v-card-actions>
-        <v-btn @click="save_rule">Save Rule</v-btn>
+        <v-spacer/>
+        <v-btn @click="$emit('close')">Cancel</v-btn> <v-btn color="blue-grey darken-4" @click="save_criteria">Save Criteria</v-btn>
     </v-card-actions>
 </v-card>
 </template>
@@ -43,6 +45,8 @@
 
 import AutoComplete from '../AutoComplete.vue';
 import uuidv1 from 'uuid/v1';
+
+import StationCriteria from './criteria/Station.vue';
 
 const system_securities = [{
     text: 'High Security',
@@ -66,39 +70,43 @@ for (var i = -1.0; i <= 1.0; i = i + 0.1) {
 export default {
 
     components: {
-        AutoComplete
+        AutoComplete,
+        StationCriteria
     },
 
     watch: {
-        selected_rule_type(newVal) {
-            this.selected_rule_criteria = null;
+        criteria_type(newVal) {
 
-            if (newVal) {
-                this.selected_rule_name = this.rule_types.filter((rt) => rt.value === newVal).pop().text;
+            if (newVal === 'docked') {
+                this.criteria = { name: 'Docked' };
+                this.criteria_name = 'Docked';
+                this.criteria
+            } else if (newVal) {
+                this.criteria_name = this.criteria_types.filter((rt) => rt.value === newVal).pop().text;
             }
         }
     },
 
     methods: {
-        save_rule() {
+        save_criteria() {
 
-            const rule = {
-                type: this.selected_rule_type,
-                name: this.selected_rule_name,
-                criteria: this.selected_rule_criteria,
+            const criteria = {
+                type: this.criteria_type,
+                name: this.criteria_name,
+                criteria: this.criteria,
                 id: uuidv1()
             };
 
-            this.$emit('new-rule', rule);
+            this.$emit('close', criteria);
         }
     },
 
     data() {
         return {
-            selected_rule_type: '',
-            selected_rule_name: '',
-            selected_rule_criteria: null,
-            rule_types: [{
+            criteria_type: '',
+            criteria_name: '',
+            criteria: null,
+            criteria_types: [{
                 text: 'Region',
                 value: 'region'
             },{
@@ -107,6 +115,12 @@ export default {
             },{
                 text: 'System Security',
                 value: 'system_security'
+            },{
+                text: 'Station',
+                value: 'station'
+            },{
+                text: 'Docked at Station/Structure',
+                value: 'docked'
             }],
             system_securities
         }

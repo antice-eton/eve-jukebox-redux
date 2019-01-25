@@ -7,6 +7,7 @@ class FoobarClient {
         this.foobar_url = config.foobar_url;
         this.foobar_username = config.foobar_username;
         this.foobar_password = config.foobar_password;
+        this.player_id = config.player_id;
     }
 
 
@@ -43,7 +44,8 @@ class FoobarClient {
                 return {
                     id: item.id,
                     name: item.title,
-                    itemCount: item.itemCount
+                    itemCount: item.itemCount,
+                    player_id: this.player_id
                 }
             });
         });

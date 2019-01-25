@@ -1,19 +1,19 @@
 <template>
 <v-card>
-    <v-card-title>
-        Link Spotify
-    </v-card-title>
     <v-card-text>
-        Before you can continue, you must link your spotify account.
+        Press the Login button below to link your Spotify account to EVE Jukebox Redux.
     </v-card-text>
     <v-card-actions>
+        <v-spacer />
         <v-progress-circular
         :size="25"
         indeterminate
         v-if="linking_spotify"
         />
         <template v-else>
-            <v-btn @click="linkSpotify" v-if="spotify_user === null">Link Spotify</v-btn>
+
+            <v-btn @click="$emit('cancel')">Cancel</v-btn>
+            <v-btn @click="linkSpotify" v-if="spotify_user === null" color="blue-grey darken-2">Login</v-btn>
         </template>
     </v-card-actions>
 </v-card>
@@ -22,6 +22,7 @@
 <script>
 
 var __auth_window;
+var __auth_window_check_timer;
 
 import axios from 'axios';
 
@@ -30,7 +31,8 @@ export default {
     data() {
         return {
             spotify_user: null,
-            linking_spotify: false
+            linking_spotify: false,
+            __auth_window_check_timer: null
         }
     },
 
@@ -38,6 +40,10 @@ export default {
         linkSpotify() {
             this.linking_spotify = true;
             __auth_window = window.open('/api/mp/spotify/login', 'spotify_auth', 'menubar=no,location=no,resizable=no,scrollbars=yes,status=yes,toolbar=no,height=525,width=400');
+
+            __auth_window_check_timer = setInterval(() => {
+                this.authWindowCheck();
+            },1000);
         },
 
         onRefreshSpotify() {
@@ -58,7 +64,16 @@ export default {
                 this.$emit('source-added');
             });
             */
-        }
+        },
+
+        async authWindowCheck() {
+            if (__auth_window) {
+                if (__auth_window.closed && this.linking_spotify === true) {
+                    this.linking_spotify = false;
+                    clearInterval(__auth_window_check_timer);
+                }
+            }
+        },
     },
     beforeDestroy() {
         window.document.removeEventListener('spotify-linked', this.onRefreshSpotify);

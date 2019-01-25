@@ -21,6 +21,8 @@ export default new Vuex.Store({
             docked: false
         },
 
+        playlist: null,
+
         loading_character: true,
         active_character_id: null,
         active_musicplayer_id: null,
@@ -109,6 +111,8 @@ export default new Vuex.Store({
             } else if (msg.message === 'location') {
                 state.location = msg.data;
                 state.loading_location = false;
+            } else if (msg.message === 'playlist') {
+                state.playlist = msg.data;
             } else if (msg.message === 'musicsource_active') {
                 state.musicsource_active = msg.data;
                 state.active_musicsource_id = msg.data.id;

@@ -2,13 +2,14 @@ const defaults = require('../defaults.js');
 
 exports.up = function(knex, Promise) {
     return knex.schema.createTable('music_players', function(t) {
-        defaults(knex, t);
+        t.string('id').primary();
+        t.dateTime('created_at').notNull().defaultTo(knex.fn.now());
+        t.dateTime('updated_at').nullable();
 
         t.string('client_name').notNull();
         t.string('service_name').notNull();
         t.string('service_displayName').nullable();
         t.string('service_id').nullable();
-        t.integer('character_id').notNull();
         t.json('configuration').nullable();
     });
 }

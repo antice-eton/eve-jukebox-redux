@@ -6,7 +6,7 @@ exports.up = function(knex, Promise) {
 
         t.string('session_id').notNull();
         t.integer('active_character_id').nullable();
-        t.integer('active_musicplayer_id').nullable();
+        t.string('active_musicplayer_id').nullable();
     });
 }
 

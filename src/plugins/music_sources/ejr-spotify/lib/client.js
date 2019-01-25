@@ -125,7 +125,8 @@ class SpotifyClient {
                     id: item.id,
                     uri: item.uri,
                     name: item.name,
-                    itemCount: item.tracks.total
+                    itemCount: item.tracks.total,
+                    player_id: this.player_id
                 };
             });
         });
@@ -144,7 +145,8 @@ class SpotifyClient {
                 id: res.id,
                 uri: res.uri,
                 name: res.name,
-                itemCounter: res.tracks.totals
+                itemCounter: res.tracks.totals,
+                player_id: this.player_id
             }
         });
     }

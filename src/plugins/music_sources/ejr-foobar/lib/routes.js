@@ -31,6 +31,8 @@ apiRoutes.post('/foobar/install', asyncMiddleware(async (req, res, next) => {
 
 apiRoutes.post('/foobar/test', asyncMiddleware(async (req, res, next) => {
 
+    console.log('foobar test:', req);
+
     const testUrl = req.body.foobar_url + '/api/playlists';
 
     try {

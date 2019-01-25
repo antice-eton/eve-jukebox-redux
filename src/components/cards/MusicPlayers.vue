@@ -28,13 +28,19 @@
     </v-list>
   </v-card-text>
   <v-card-actions>
-    <v-btn @click="add_musicplayer_dialog = true">
+    <v-spacer />
+    <v-btn v-if="dialog" @click="$emit('close')">Close</v-btn>
+    <v-btn @click="add_musicplayer_dialog = true" color="blue-grey darken-4">
       Add Music Player
     </v-btn>
   </v-card-actions>
 
-  <v-dialog v-model="add_musicplayer_dialog" lazy max-width="450">
-      <AddMusicPlayerStepper @player-added="refreshPlayers(); add_musicplayer_dialog = false"/>
+  <v-dialog v-model="add_musicplayer_dialog" lazy max-width="500">
+      <AddMusicPlayerStepper
+        @cancel="add_musicplayer_dialog=false"
+        @player-added="refreshPlayers(); add_musicplayer_dialog = false"
+        v-if="add_musicplayer_dialog"
+        />
   </v-dialog>
 </v-card>
 </template>
@@ -45,6 +51,10 @@ import axios from 'axios';
 import AddMusicPlayerStepper from '../steppers/AddMusicPlayer.vue';
 
 export default {
+
+    props: {
+        dialog: Boolean
+    },
 
     components: {
         AddMusicPlayerStepper
@@ -65,7 +75,7 @@ export default {
             this.processing_player = playerId;
             await axios.post('/api/music_players/' + playerId + '/activate');
             this.$store.commit('ACTIVATE_MUSICPLAYER_ID', playerId);
-            this.$emit('cancel');
+            this.$emit('close');
             this.processing_player = null;
         },
 
@@ -95,6 +105,10 @@ export default {
                 this.refreshPlayers();
             });
         }
+    },
+
+    mounted() {
+        this.refreshPlayers();
     }
 }
 </script>

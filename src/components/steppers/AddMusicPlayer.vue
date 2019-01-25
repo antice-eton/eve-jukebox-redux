@@ -26,15 +26,17 @@
                     label="Select music source" />
         </v-card-text>
         <v-card-actions>
-          <v-btn @click="add_musicplayer_step = 2" :disabled="!form.selected_plugin">
-              Next
-          </v-btn>
+            <v-spacer />
+            <v-btn @click="$emit('cancel')">Cancel</v-btn>
+            <v-btn @click="add_musicplayer_step = 2" :disabled="!form.selected_plugin" color="blue-grey darken-2">
+                Next
+            </v-btn>
         </v-card-actions>
       </v-card>
     </v-stepper-content>
 
     <v-stepper-content :step="2">
-      <component :is="musicplayer_component" @player-added="onPlayerAdded" />
+      <component :is="musicplayer_component" @cancel="$emit('cancel')" @player-added="onPlayerAdded" />
     </v-stepper-content>
 
   </v-stepper-items>

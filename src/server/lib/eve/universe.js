@@ -87,9 +87,21 @@ const UniverseMethods = {
             const stations = await knex.select('*').from('eve_stations');
             return stations;
         } else {
-            const stations = await knex.select('*').from('eve_stations').where(
-                'name', 'like', '%' + query
-            );
+
+            const where = {};
+
+            console.log('QUERY:', query);
+
+            const stations = await knex.select('*').from('eve_stations').where(function() {
+                if (query.hasOwnProperty('system_id')) {
+                    this.where('system_id', parseInt(query['system_id']));
+                }
+
+                if (typeof query === 'string') {
+                    this.where('name', 'like', '%' + query);
+                }
+            }).orderBy('name');
+
             return stations;
         }
     },
@@ -113,12 +125,12 @@ const UniverseMethods = {
 
     async systems(query) {
         if (!query) {
-            const systems = await knex.select('*').from('eve_systems');
+            const systems = await knex.select('*').from('eve_systems').orderBy('name');
             return systems;
         } else {
             const systems = await knex.select('*').from('eve_systems').where(
                 'name', 'like', query + '%'
-            );
+            ).orderBy('name');
             return systems;
         }
     },
@@ -137,9 +149,9 @@ const UniverseMethods = {
         if (query) {
             regions = await knex.select('*').from('eve_regions').where(
                 'name', 'like', query + '%'
-            );
+            ).orderBy('name');
         } else {
-            regions = await knex.select('*').from('eve_regions');
+            regions = await knex.select('*').from('eve_regions').orderBy('name');
         }
 
         return regions;

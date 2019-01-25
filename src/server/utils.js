@@ -8,12 +8,26 @@ const winston = require('winston');
 const appConfig = require('./config.js');
 const knex = require('knex');
 
+const log_error_stack_format = winston.format(info => {
+    if (info instanceof Error) {
+        return Object.assign({}, info, {
+            stack: info.stack,
+            message: info.message
+        });
+    }
+
+    return info;
+});
+
 var logger;
 function get_logger() {
     if (!logger) {
         logger = winston.createLogger({
+            handleExceptions: true,
+            humanReadableUnhandledException: true,
             level: 'debug',
             format: winston.format.combine(
+
                 winston.format.timestamp({
                     format: 'YYYY-MM-DD HH:mm:ss'
                 }),

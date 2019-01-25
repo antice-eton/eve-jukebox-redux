@@ -1,3 +1,12 @@
+const spotify_client_id = '';
+const spotify_scopes = [
+    'playlist-read-private',
+    'playlist-read-collaborative',
+    'app-remote-control',
+    'user-read-playback-state',
+    'user-modify-playback-state'
+];
+
 module.exports = {
     "listenHost": "0.0.0.0",
     "listenPort": "8888",

@@ -44,19 +44,31 @@
         <p>
             To add characters, click the button below.
         </p>
+        <!--
         <v-layout>
             <v-flex transition="fade-transition" v-if="adding_character === false">
                 <v-img :src="eve_login_logo" @click="doLogin" width="195" height="30"/>
             </v-flex>
             <v-flex v-else transition="fade-transition">
-                <v-progress-circular
-                :size="25"
-                indeterminate
-                transition="fade-transition"
-                />
+
             </v-flex>
         </v-layout>
+    -->
     </v-card-text>
+
+    <v-card-actions>
+        <v-spacer/>
+        <v-btn flat v-if="dialog && adding_character === false" @click="$emit('close')" class="mx-2">Close</v-btn>
+        <v-img :src="eve_login_logo" @click="doLogin" max-width="195" max-height="30" v-if="adding_character === false"/>
+        <v-progress-circular
+            v-else
+            :size="16"
+            :width="1"
+            class="mx-3"
+            indeterminate
+            transition="fade-transition"
+            />
+    </v-card-actions>
 
     <v-dialog v-model="confirm_delete_modal" persistent max-width="280">
         <v-card>
@@ -83,6 +95,10 @@ import axios from 'axios';
 
 
 export default {
+    props: {
+        dialog: Boolean
+    },
+
     data() {
         return {
             confirm_delete_modal: false,
@@ -185,7 +201,7 @@ export default {
 
             await axios.post('/api/session/activate_character', { character_id: char.character_id });
             this.$store.commit('ACTIVATE_CHARACTER_ID', char.character_id);
-            this.$emit('cancel');
+            this.$emit('close');
         }
     },
 

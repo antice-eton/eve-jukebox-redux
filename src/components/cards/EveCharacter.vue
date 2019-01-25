@@ -1,5 +1,5 @@
 <template>
-<v-card raised dark>
+<v-card dark>
     <v-card-title class="grey darken-4">Character</v-card-title>
     <v-card-text>
         <v-layout wrap>
@@ -41,9 +41,14 @@
                         <p v-else-if="musicplayer_id === null">
                             <v-icon small>music_note</v-icon> No player selected
                         </p>
-                        <p v-else>
-                            <v-icon small>music_note</v-icon> {{ musicplayer_name }}
-                        </p>
+                        <template v-else>
+                            <p class="mb-0">
+                                <v-icon small>music_note</v-icon> {{ musicplayer_name }}
+                            </p>
+                            <p class="mt-0">
+                                <v-icon small class="ma-0 pa-0">list</v-icon> {{ playlist_name }}
+                            </p>
+                        </template>
                     </v-flex>
                 </v-layout>
             </v-flex>
@@ -86,19 +91,26 @@
             </v-flex>
         </v-layout>
     </v-card-text>
-    <v-card-actions class="grey darken-4">
-        <v-btn @click="loadCharactersCard"><v-icon class="mr-2">account_box</v-icon> Select Character</v-btn>
-        <v-btn @click="loadMusicPlayersCard"><v-icon class="mr-2">music_note</v-icon> Select Music Player</v-btn>
-        <v-btn @click="loadPlaylistsCard"><v-icon class="mr-2">list</v-icon> Playlist Rules</v-btn>
+    <v-card-actions class="grey darken-1">
+        <v-spacer/>
+        <v-btn @click="loadCharactersCard" color="blue-grey darken-4">
+            <v-icon class="mr-2">account_box</v-icon> Select Character
+        </v-btn>
+        <v-btn @click="loadMusicPlayersCard" color="blue-grey darken-4">
+            <v-icon class="mr-2">music_note</v-icon> Select Music Player
+        </v-btn>
+        <v-btn @click="load_playlist_rules_card" :disabled="disable_playlist_rules_button" color="blue-grey darken-4">
+            <v-icon class="mr-2">list</v-icon> Playlist Rules
+        </v-btn>
     </v-card-actions>
     <v-dialog v-model="manage_characters" max-width="500">
-        <EveCharactersCard @cancel="manage_characters = false" ref="eve-characters-card"/>
+        <EveCharactersCard @close="manage_characters = false" v-if="manage_characters" dialog/>
     </v-dialog>
     <v-dialog v-model="manage_musicplayers" max-width="500">
-        <MusicPlayersCard @cancel="manage_musicplayers = false" ref="music-players-card"/>
+        <MusicPlayersCard @close="manage_musicplayers = false" v-if="manage_musicplayers" dialog/>
     </v-dialog>
-    <v-dialog v-model="manage_playlists" max-width="1024">
-        <PlaylistsCard @cancel="manage_playlists = false; " ref="playlists-card"/>
+    <v-dialog v-model="manage_playlists" max-width="1024" >
+        <PlaylistRulesCard @close="manage_playlists = false; " class="elevation-20"  v-if="manage_playlists" dialog/>
     </v-dialog>
 </v-card>
 </template>
@@ -107,7 +119,7 @@
 
 import EveCharactersCard from './EveCharacters.vue';
 import MusicPlayersCard from './MusicPlayers.vue';
-import PlaylistsCard from './Playlists.vue';
+import PlaylistRulesCard from './PlaylistRulesCard.vue';
 
 import _ from 'lodash';
 import axios from 'axios';
@@ -117,7 +129,7 @@ export default {
     components: {
         EveCharactersCard,
         MusicPlayersCard,
-        PlaylistsCard
+        PlaylistRulesCard
     },
 
     data() {
@@ -129,11 +141,34 @@ export default {
             loading_musicplayer: false,
             character_name: null,
             musicplayer_name: null,
-            music_player: null
+            music_player: null,
+            pr_card_counter: 0
         }
     },
 
     computed: {
+        playlist_name() {
+            if (this.$store.state.playlist) {
+                return this.$store.state.playlist.display_name;
+            } else {
+                return '';
+            }
+        },
+
+        playlist_id() {
+            if (this.$store.state.playlist) {
+                return this.$store.state.playlist.id;
+            }
+        },
+
+        playlist() {
+            return this.$store.state.playlist;
+        },
+
+        disable_playlist_rules_button() {
+            return this.musicplayer_id === null;
+        },
+
         character_id() {
             return this.$store.state.active_character_id;
         },
@@ -168,6 +203,16 @@ export default {
     },
 
     watch: {
+        async playlist(newVal, oldVal) {
+            if (newVal.id === oldVal.id) {
+                return;
+            } else {
+                console.log('play this playlist:', newVal);
+                await axios.post('/api/music_players/' + newVal.player_id + '/playlists/' + newVal.id + '/play');
+            }
+        },
+
+
         character_id(newVal) {
             if (newVal) {
                 this.loadCharacter(newVal);
@@ -185,17 +230,15 @@ export default {
     methods: {
 
         async loadCharactersCard() {
-            this.$refs['eve-characters-card'].loadCharacters();
             this.manage_characters = true;
         },
 
         async loadMusicPlayersCard() {
-            this.$refs['music-players-card'].refreshPlayers();
             this.manage_musicplayers = true;
         },
 
-        async loadPlaylistsCard() {
-            this.$refs['playlists-card'].reload();
+        async load_playlist_rules_card() {
+            this.pr_card_counter++;
             this.manage_playlists = true;
         },
 
@@ -219,6 +262,8 @@ export default {
                     if (this.socket_connected) {
                         this.$socket.send(JSON.stringify({message: 'reload'}));
                         clearInterval(timer);
+                    } else {
+                        this.$connect();
                     }
                 }, 1000);
                 // this.$socket.send(JSON.stringify({message: 'reload'}));

@@ -1,21 +1,18 @@
 const defaults = require('../defaults.js');
 
 exports.up = function(knex, Promise) {
-    return knex.schema.createTable('playlists', function(t) {
+    return knex.schema.createTable('playlist_rules', function(t) {
         t.string('id').primary().notNull();
-        
+
         t.dateTime('created_at').notNull().defaultTo(knex.fn.now());
         t.dateTime('updated_at').nullable();
 
-
-
-        t.integer('player_id').notNull();
+        t.string('player_id').notNull();
         t.string('player_playlist_id').notNull();
         t.string('display_name').notNull();
-        t.integer('character_id').notNull();
 
         t.integer('priority').notNull();
-        t.json('rules').notNull();
+        t.json('criteria').notNull();
     });
 }
 

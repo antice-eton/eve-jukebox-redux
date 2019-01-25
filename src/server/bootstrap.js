@@ -13,11 +13,11 @@ module.exports = async function() {
     const bootstrapApp = require('./lib/bootstrap/app.js');
     const bootstrapEve = require('./lib/bootstrap/eve.js');
     const bootstrapSde = require('./lib/bootstrap/sde.js');
-    const bootstrapMp  = require('./lib/bootstrap/musicPlayers.js');
+    //const bootstrapMp  = require('./lib/bootstrap/musicPlayers.js');
 
     await bootstrapDb();
+    //await bootstrapMp();
     await bootstrapApp();
-    await bootstrapMp();
     await bootstrapSde();
     await bootstrapEve();
 

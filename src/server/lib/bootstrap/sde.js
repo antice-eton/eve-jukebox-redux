@@ -209,6 +209,32 @@ async function prepare_sde() {
             });
         }
 
+        logger.info('[SDE] Creating corporations...');
+
+        const corporationsDoc = yaml.safeLoad(fs.readFileSync('sde/sde/bsd/crpNPCCorporations.yaml'));
+
+        for (let i = 0; i < corporationsDoc.length; i++) {
+            const corp = corporationsDoc[i];
+            if (corp.corporationID === 1000001) {
+                continue; // Some strange internal game corp that is not used
+            }
+
+            const invName = await knex.select('itemName').from('eve_names').where({
+                itemID: corp.corporationID
+            }).first();
+
+            if (!invName) {
+                console.error('Corporation has no name:', corp);
+                throw new Error('No name for corporation id:' + corp.corporationID);
+            }
+
+            await knex('eve_corporations').insert({
+                corporation_id: corp.corporationID,
+                faction_id: corp.factionID,
+                name: invName.itemName
+            });
+        }
+
         logger.info('[SDE] SDE Prepared.');
     }
 }
@@ -243,9 +269,19 @@ async function process_region(folder) {
         return path.resolve(folder, cname);
     });
 
+    var region_systems = [];
+
     for (let i = 0; i < folderContents.length; i++) {
-        await process_constellation(folderContents[i], region);
+
+        const new_systems = await process_constellation(folderContents[i], region);
+        region_systems = region_systems.concat(new_systems);
+
+
+        // await process_constellation(folderContents[i], region);
     }
+
+    logger.debug('[SDE] Creating ' + region_systems.length + ' systems for "' + region.name + '"');
+    await orm('eve_systems').insert(region_systems);
 
     return region;
 }
@@ -327,13 +363,14 @@ async function process_constellation(folder, region) {
         })
     }
 
-    logger.debug('[SDE] Creating ' + systems.length + ' systems for "' + region.name + '/' + constellation.name + '"');
-    await orm('eve_systems').insert(systems);
+    return systems;
+
+
 //    const newSystems = await models.EveSystem.bulkCreate(systems, { individualHooks: true });
 
 //    await constellation.addSystems(newSystems);
 
-    return constellation[0];
+    //return constellation[0];
 }
 
 module.exports = prepare_sde;

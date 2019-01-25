@@ -42,5 +42,30 @@ module.exports = async function() {
     app.use(require('../routes/ejr/music_players.js').routes);
     app.use(require('../routes/ejr/session.js').routes);
     app.use(require('../routes/ejr/plugins.js').routes);
-    app.use(require('../routes/ejr/playlists.js').routes);
+    app.use(require('../routes/ejr/playlist_rules.js').routes);
+
+    const musicSources = require('../../../plugins/music_sources/ejr-plugins-api.js');
+
+    Object.keys(musicSources).forEach((musicSourceName) => {
+        logger.info('Adding music source plugin: ' + musicSourceName);
+
+        const musicSource = musicSources[musicSourceName];
+
+        if (musicSource['bootstrap']) {
+            musicSource['bootstrap'](appConfig);
+        }
+
+        if (musicSource['routes']) {
+            app.use('/api/mp', musicSource['routes']);
+        }
+    });
+
+    app.use((err, req, res, next) => {
+        logger.error('Unhandled Exception');
+        console.error('ERROR:', err);
+        res.status(500).json({
+            status: 500,
+            message: err
+        });
+    });
 }
