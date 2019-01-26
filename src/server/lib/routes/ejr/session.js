@@ -91,6 +91,7 @@ apiRoutes.post('/api/session/deactivate_character', asyncMiddleware(async (req, 
 
 
         req.session.character_id = null;
+        req.session.musicplayer_id = null;
 
         res.status(204).send();
     } catch (e) {
