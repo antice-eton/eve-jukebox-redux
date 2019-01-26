@@ -4,7 +4,7 @@ exports.up = function(knex, Promise) {
     return knex.schema.createTable('playlist_rules', function(t) {
         t.string('id').primary().notNull();
 
-        t.dateTime('created_at').notNull().defaultTo(knex.fn.now());
+        t.dateTime('created_at').nullable();
         t.dateTime('updated_at').nullable();
 
         t.string('player_id').notNull();

@@ -1,11 +1,11 @@
 <template>
-<v-card dark>
-    <v-card-title class="grey darken-4">Character</v-card-title>
+<v-card dark max-width="1024">
+    <v-card-title class="grey darken-4">EVE Jukebox Redux v1.0.0-beta</v-card-title>
     <v-card-text>
         <v-layout wrap>
             <v-flex xs6>
                 <v-layout wrap>
-                    <v-flex xs3>
+                    <v-flex xs3 text-xs-center>
                         <v-progress-circular indeterminate v-if="loading_character"/>
                         <v-avatar size="100" v-else>
                             <img :src="'/api/eve/characters/' + character_id + '/portrait'">
@@ -93,6 +93,9 @@
     </v-card-text>
     <v-card-actions class="grey darken-1">
         <v-spacer/>
+        <v-btn @click="logout">
+            Logout
+        </v-btn>
         <v-btn @click="loadCharactersCard" color="blue-grey darken-4">
             <v-icon class="mr-2">account_box</v-icon> Select Character
         </v-btn>
@@ -204,14 +207,16 @@ export default {
 
     watch: {
         async playlist(newVal, oldVal) {
-            if (newVal.id === oldVal.id) {
+            if (!newVal) {
                 return;
-            } else {
-                console.log('play this playlist:', newVal);
-                await axios.post('/api/music_players/' + newVal.player_id + '/playlists/' + newVal.id + '/play');
             }
-        },
 
+            if (oldVal && oldVal.id === newVal.id) {
+                return;
+            }
+
+            await axios.post('/api/music_players/' + newVal.player_id + '/playlists/' + newVal.id + '/play');
+        },
 
         character_id(newVal) {
             if (newVal) {
@@ -240,6 +245,11 @@ export default {
         async load_playlist_rules_card() {
             this.pr_card_counter++;
             this.manage_playlists = true;
+        },
+
+        async logout() {
+            await axios.post('/api/session/deactivate_character');
+            this.$store.commit('DEACTIVATE_CHARACTER');
         },
 
         async loadMusicPlayer(player_id) {

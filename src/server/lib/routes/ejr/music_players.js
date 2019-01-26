@@ -78,9 +78,11 @@ apiRoutes.post('/api/music_players/:player_id/playlists/:playlist_id/play', requ
         });
     }
 
+    const config = (typeof music_player[0].configuration === 'string') ? JSON.parse(music_player[0].configuration) : music_player[0].configuration;
+
     const mp_client_config = {
         player_id: req.params.player_id,
-        ...music_player[0].configuration,
+        ...config,
         ...appConfig[music_player[0].client_name]
     };
 
@@ -102,9 +104,11 @@ apiRoutes.get('/api/music_players/:player_id/playlists/:playlist_id', require_se
         throw new Error('The selected music player is linked to the active character, but it could not be found in the music_players table');
     }
 
+    const config = (typeof music_player[0].configuration === 'string') ? JSON.parse(music_player[0].configuration) : music_player[0].configuration;
+
     const mp_client_config = {
         player_id: req.params.player_id,
-        ...music_player[0].configuration,
+        ...config,
         ...appConfig[music_player[0].client_name]
     };
 
@@ -127,9 +131,11 @@ apiRoutes.get('/api/music_players/:player_id/playlists', require_session_charact
         throw new Error('Music player linked to character but not found in music players table');
     }
 
+    const config = (typeof music_player[0].configuration === 'string') ? JSON.parse(music_player[0].configuration) : music_player[0].configuration;
+
     const mp_client_config = {
         player_id: req.params.player_id,
-        ...music_player[0].configuration,
+        ...config,
         ...appConfig[music_player[0].client_name]
     };
 

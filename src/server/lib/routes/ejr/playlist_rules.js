@@ -31,7 +31,12 @@ apiRoutes.get('/api/playlist_rules', require_session_character_id, asyncMiddlewa
     .orderBy('priority', 'asc');
 
     res.json({
-        playlist_rules: playlist_rules
+        playlist_rules: playlist_rules.map((row) => {
+            if (typeof row.criteria === 'string') {
+                row.criteria = JSON.parse(row.criteria);
+            }
+            return row;
+        })
     });
 }));
 

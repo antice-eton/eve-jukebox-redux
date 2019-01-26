@@ -55,7 +55,8 @@ function get_orm() {
         orm = knex({
             client: appConfig.database.client,
             connection: appConfig.database.uri,
-            asyncStackTraces: true
+            asyncStackTraces: true,
+            useNullAsDefault: true
         });
     }
 

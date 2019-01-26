@@ -3,7 +3,7 @@ const defaults = require('../defaults.js');
 exports.up = function(knex, Promise) {
     return knex.schema.createTable('music_players', function(t) {
         t.string('id').primary();
-        t.dateTime('created_at').notNull().defaultTo(knex.fn.now());
+        t.dateTime('created_at').nullable();
         t.dateTime('updated_at').nullable();
 
         t.string('client_name').notNull();

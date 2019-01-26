@@ -137,14 +137,27 @@ export default new Vuex.Store({
             state.loading_online = true;
             state.loading_location = true;
             state.online = null;
+            state.playlist = null;
         },
 
         ACTIVATE_MUSICPLAYER_ID(state, playerId) {
             state.active_musicplayer_id = playerId;
         },
 
-        DEACTIVATE_CHARACTER_ID(state) {
+        DEACTIVATE_CHARACTER(state) {
             state.active_character_id = null;
+            state.palylist = null;
+            state.active_musicplayer_id = null;
+            state.active_musicsource_name = null;
+            state.musicsource_active = null;
+            state.active_musicsource = {
+                id: null,
+                service_id: null,
+                service_name: null,
+                service_displayName: null,
+                status: false,
+                nowPlaying: null
+            };
         },
 
         ACTIVATE_CHARACTER(state, character) {

@@ -10,10 +10,16 @@
     </v-card-text>
 
     <v-card-text v-else>
+        <p v-if="dialog === false">
+            Welcome to EVE Jukebox Redux. This new tool is currently in a closed beta and is only available to certain individuals. It will be made public soon.
+        </p>
         <p v-if="characters.length === 0">
             You have no EVE Online characters registered. Click the button below to add a character.
         </p>
         <v-list two-line v-else>
+            <p v-if="dialog === false">
+                Choose a character below to continue.
+            </p>
             <v-subheader>Characters</v-subheader>
 
             <v-list-tile

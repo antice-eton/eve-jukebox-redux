@@ -51,7 +51,11 @@ async function target_playlist(location, client) {
 
     for (let i = 0; i < playlists.length; i++) {
         const playlist_rule = playlists[i];
-        const criteria = playlists[i].criteria;
+        if (typeof playlist_rule.criteria === 'string') {
+            playlist_rule.criteria = JSON.parse(playlist_rule.criteria);
+        }
+
+        const criteria = playlist_rule.criteria;
 
         for (let j = 0; j < criteria.length; j++) {
             const c = criteria[j];
@@ -70,7 +74,7 @@ async function target_playlist(location, client) {
                 }
             } else if (c.type === 'system_security') {
 
-                const security = Math.floor(location.system.security_status * 10) / 10;
+                const security = Math.round(location.system.security_status * 10) / 10;
 
                 console.log('Checking security:', security, ' - against:', c.criteria);
 

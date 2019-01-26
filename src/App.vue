@@ -33,18 +33,10 @@
         </v-content>
         <v-content v-else key="character">
             <v-container fluid>
-                <v-layout wrap>
-                    <v-flex xs12>
-                        <h1 class="mb-1 display-1">EVE Jukebox Redux</h1>
-                    </v-flex>
-                    <v-flex xs12>
+                <v-layout justify-center>
+                    <v-flex xs8>
                         <EveCharacterCard/>
                     </v-flex>
-                    <!--
-                    <v-flex xs12 class="mt-4">
-                        <MusicCard/>
-                    </v-flex>
-                    -->
                 </v-layout>
             </v-container>
         </v-content>

@@ -10,33 +10,115 @@ var yaml = require('js-yaml');
 var utils = require('../../utils.js');
 var logger = require('../../utils.js').get_logger();
 
-async function bootstrap_names() {
-    // We have to bootstrap the entire list of unique names
-    // Because all the other SDE files refer to a name id
-    logger.info('[SDE] Loading unique names');
-    const nameDoc = yaml.safeLoad(fs.readFileSync(path.resolve('sde','sde','bsd','invUniqueNames.yaml')));
-
-    logger.info('[SDE] Total names: ' + nameDoc.length);
-
-    var chunkSize = 1000;
+function chunk_array(arr, chunkSize) {
     const chunks = [];
 
-    for (var i = 0; i < nameDoc.length; i += chunkSize) {
-        chunks.push(nameDoc.slice(i, i+chunkSize));
+    for (var i = 0; i < arr.length; i += chunkSize) {
+        chunks.push(arr.slice(i, i + chunkSize));
     }
 
-    const orm = utils.get_orm();
+    return chunks;
+}
 
-    for (var j = 0; j < chunks.length; j++) {
-        logger.info('Bulk creating ' + chunks[j].length + ' names to db.');
-        await orm('eve_names').insert(chunks[j]);
-        // await models.EveName.bulkCreate(chunks[j]);
+async function chunked_insert(table, items, chunkSize) {
+    const chunks = chunk_array(items, chunkSize);
+    const knex = utils.get_orm();
+
+    var remaining = items.length;
+
+    for (var i = 0; i < chunks.length; i++) {
+        await knex(table).insert(chunks[i]);
+        remaining = remaining - chunks[i].length;
+        logger.debug('[SDE] ' + remaining + ' ' + table + ' remaining...');
+    }
+}
+
+async function process_stations() {
+
+    logger.info('[SDE] Creating stations...');
+
+    const stationDoc = yaml.safeLoad(fs.readFileSync('sde/sde/bsd/staStations.yaml'));
+    const stations = [];
+
+    for (let i = 0; i < stationDoc.length; i++) {
+        const station = stationDoc[i];
+
+        stations.push({
+            station_id: station.stationID,
+            system_id: station.solarSystemID,
+            region_id: station.regionID,
+            constellation_id: station.constellationID,
+            type_id: station.stationTypeID,
+            name: station.stationName,
+            owner: station.corporationID
+        });
     }
 
-    //logger.info('[SDE] Bulk creating names to db');
-    // await models.EveName.bulkCreate(nameDoc);
-    logger.info('[SDE] Ugh, done');
+    await chunked_insert('eve_stations', stations, 82);
+}
 
+async function process_systems(systems) {
+    logger.info('[SDE] Creating systems...');
+    await chunked_insert('eve_systems', systems, 111);
+}
+
+async function process_names() {
+    logger.info('[SDE] Creating unique names...');
+    const nameDoc = yaml.safeLoad(fs.readFileSync(path.resolve('sde','sde','bsd','invUniqueNames.yaml')));
+    await chunked_insert('eve_names', nameDoc, 333);
+}
+
+async function process_factions() {
+    logger.info('[SDE] Creating factions...');
+
+    const factionsDoc = yaml.safeLoad(fs.readFileSync('sde/sde/bsd/chrFactions.yaml'));
+    const factions = [];
+
+    for (let i = 0; i < factionsDoc.length; i++) {
+        const faction = factionsDoc[i];
+        factions.push({
+            corporation_id: faction.corporationID,
+            faction_id: faction.factionID,
+            name: faction.factionName,
+            militia_corporation_id: faction.militiaCorporationId,
+            description: faction.description
+        });
+    }
+
+    await chunked_insert('eve_factions', factions, 123);
+}
+
+async function process_npc_corporations() {
+
+    logger.info('[SDE] Creating NPC corporations...');
+
+    const corporationsDoc = yaml.safeLoad(fs.readFileSync('sde/sde/bsd/crpNPCCorporations.yaml'));
+    const corporations = [];
+    const knex = utils.get_orm();
+
+    for (let i = 0; i < corporationsDoc.length; i++) {
+        const corp = corporationsDoc[i];
+        if (corp.corporationID === 1000001) {
+            continue; // Some strange internal game corp that is not used
+        }
+
+        const invName = await knex.select('itemName').from('eve_names').where({
+            itemID: corp.corporationID
+        }).first();
+
+        if (!invName) {
+            console.error('Corporation has no name:', corp);
+            throw new Error('No name for corporation id:' + corp.corporationID);
+        }
+
+        corporations.push({
+            corporation_id: corp.corporationID,
+            faction_id: corp.factionID,
+            name: invName.itemName
+        });
+    }
+
+    await chunked_insert('eve_corporations', corporations, 82);
 }
 
 async function download_sde(targetPath, url) {
@@ -109,8 +191,6 @@ async function prepare_sde() {
     var totalStations = await knex('eve_stations').count('id').first();
     totalStations = totalStations['count(`id`)'];
 
-    console.log('TOTAL STATIONS:', totalStations);
-
     // Postgres could return a string
     if (totalStations === 0 || totalStations === "0") {
         logger.info('[SDE] Station count is zero. I assume SDE is not in the database.');
@@ -132,7 +212,7 @@ async function prepare_sde() {
             logger.info('[SDE] SDE Downloaded and extracted');
         }
 
-        await bootstrap_names();
+        await process_names();
 
         logger.info('[SDE] Prepare K-Space universe data');
 
@@ -150,8 +230,11 @@ async function prepare_sde() {
             return path.resolve(folder, rname);
         });
 
+        var total_systems = [];
+
         for (let i = 0; i < folderContents.length; i++) {
-            await process_region(folderContents[i]);
+            var region_systems = await process_region(folderContents[i]);
+            total_systems = total_systems.concat(region_systems);
         }
 
         logger.info('[SDE] Prepare W-Space universe data');
@@ -171,7 +254,24 @@ async function prepare_sde() {
         });
 
         for (let i = 0; i < folderContents.length; i++) {
-            await process_region(folderContents[i]);
+            var region_systems = await process_region(folderContents[i]);
+            total_systems = total_systems.concat(region_systems);
+        }
+
+        await process_systems(total_systems);
+        await process_stations();
+        await process_factions();
+        await process_npc_corporations();
+
+        /*
+        var remaining_systems = total_systems.length;
+
+        const system_chunk_size = 111; // sqlite3 max
+
+        for (var i = 0; i < total_systems.length; i++) {
+            await knex('eve_systems').insert(total_systems[i]);
+            remaining_systems--;
+            logger.debug('[SDE] Created system: ' + total_systems[i].name + ' -- ' + remaining_systems + ' remaining');
         }
 
 
@@ -234,6 +334,7 @@ async function prepare_sde() {
                 name: invName.itemName
             });
         }
+        */
 
         logger.info('[SDE] SDE Prepared.');
     }
@@ -280,10 +381,20 @@ async function process_region(folder) {
         // await process_constellation(folderContents[i], region);
     }
 
-    logger.debug('[SDE] Creating ' + region_systems.length + ' systems for "' + region.name + '"');
-    await orm('eve_systems').insert(region_systems);
+    /*
 
-    return region;
+    var remaining_systems = region_systems.length;
+
+    for (var i = 0; i < region_systems.length; i++) {
+        await orm('eve_systems').insert(region_systems[i]);
+        remaining_systems--;
+        logger.debug('[SDE] Creating system: ' + region_systems[i].name + ' -- ' + remaining_systems + ' remaining');
+    }
+
+    //logger.debug('[SDE] Creating ' + region_systems.length + ' systems for "' + region.name + '"');
+    //await orm('eve_systems').insert(region_systems);
+    */
+    return region_systems;
 }
 
 async function process_constellation(folder, region) {
@@ -357,7 +468,7 @@ async function process_constellation(folder, region) {
             name: invName.itemName,
             system_id: systemDoc.solarSystemID,
             constellation_id: constellation .constellation_id,
-            security_status: systemDoc.security,
+            security_status: Math.round(systemDoc.security * 10) / 10,
             security_class: systemDoc.securityClass,
             star_id: systemDoc.star.id,
         })

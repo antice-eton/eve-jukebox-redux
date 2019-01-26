@@ -47,7 +47,7 @@ class SpotifyClient {
             id: this.player_id
         });
 
-        const mp_config = music_player[0].configuration;
+        const mp_config = (typeof music_player[0].configuration === 'string')? JSON.parse(music_player[0].configuration) : music_player[0].configuration;
         mp_config['access_token'] = this.access_token;
 
         await knex('music_players').where({
@@ -103,13 +103,14 @@ class SpotifyClient {
                 } catch (e) {
                     if (e.response) {
                         logger.error('Error getting new spotify oauth tokens:');
-                        logger.error(e.response.data);
+                        console.error(e);
                         throw new Error('Error getting new spotify oauth tokens');
                     } else {
                         throw e;
                     }
                 }
             } else {
+                console.error(e);
                 throw e;
             }
         }
