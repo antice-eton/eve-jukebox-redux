@@ -92,6 +92,13 @@ class FoobarClient {
         });
     }
 
+    async stop() {
+        return this._req({
+            url: '/api/player/stop',
+            method: 'post'
+        });
+    }
+
     async status() {
 
         return this._req({

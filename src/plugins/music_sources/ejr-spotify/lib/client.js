@@ -172,6 +172,20 @@ class SpotifyClient {
         });
     }
 
+    async stop() {
+        return this._req({
+            method: 'put',
+            url: '/v1/me/player/pause'
+        })
+        .catch((err) => {
+            if (err.response) {
+                console.error(err.response);
+            }
+
+            throw err;
+        });
+    }
+
     async status() {
         const res = await this._req({
             url: '/v1/me/player/devices'

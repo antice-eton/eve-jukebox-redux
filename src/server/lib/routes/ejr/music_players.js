@@ -241,6 +241,31 @@ apiRoutes.delete('/api/music_players/:player_id', require_session_character_id, 
     res.status(204).send();
 }));
 
+apiRoutes.post('/api/music_players/:player_id/stop', require_session_character_id, own_player_id, asyncMiddleware(async (req, res, next) => {
+    const character_id = req.session.character_id;
+    const knex = utils.get_orm();
+
+    const music_player = await knex.select('*').from('music_players').where({
+        id: req.params.player_id
+    });
+
+    if (music_player.length === 0) {
+        throw new Error('Music player linked to character but not found in music players table');
+    }
+
+    const config = (typeof music_player[0].configuration === 'string') ? JSON.parse(music_player[0].configuration) : music_player[0].configuration;
+
+    const mp_client_config = {
+        player_id: req.params.player_id,
+        ...config,
+        ...appConfig[music_player[0].client_name]
+    };
+
+    const player = new plugins[music_player[0].client_name].client(mp_client_config);
+    await player.stop();
+    res.status(204).send();
+}));
+
 apiRoutes.post('/api/music_players', require_session_character_id, asyncMiddleware(async (req, res, next) => {
 
     const character_id = req.session.character_id;
