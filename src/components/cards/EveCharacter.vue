@@ -215,7 +215,11 @@ export default {
                 return;
             }
 
-            await axios.post('/api/music_players/' + newVal.player_id + '/playlists/' + newVal.id + '/play');
+            if (newVal.player_playlist_id === 'special-stop') {
+                await axios.post('/api/music_players/' + newVal.player_id + '/stop');
+            } else {
+                await axios.post('/api/music_players/' + newVal.player_id + '/playlists/' + newVal.id + '/play');
+            }
         },
 
         character_id(newVal) {
