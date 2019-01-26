@@ -6,6 +6,7 @@ exports.up = function(knex, Promise) {
 
         t.string('character_name').notNull();
         t.integer('character_id').notNull();
+        t.integer('corporation_id').nullable();
         t.string('session_id').notNull();
         t.text('access_token').notNull();
         t.text('refresh_token').notNull();
