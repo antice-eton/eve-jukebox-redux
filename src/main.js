@@ -4,8 +4,12 @@ import App from './App.vue';
 // import router from './router';
 import store from './store';
 
+console.log('location:', location);
+
+const wshost = (location.protocol !== 'https:') ? 'ws://' + location.host + '/live' : 'wss://' + location.host + '/live';
+
 import VueNativeSock from 'vue-native-websocket';
-Vue.use(VueNativeSock, 'ws://' + location.host + '/live', {
+Vue.use(VueNativeSock, wshost, {
     format: 'json',
     reconnection: true,
     connectManually: true,
