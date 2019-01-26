@@ -30,7 +30,7 @@ module.exports = async function() {
         clientID: appConfig.eve.client_id,
         clientSecret: appConfig.eve.client_secret,
         scope: appConfig.eve.scopes.join(' '),
-        callbackURL: 'http://localhost:8080/api/eve/verify'
+        callbackURL: appConfig.eve.callback_url
     }, eve_sso_callback));
 
     app.use(passport.initialize());

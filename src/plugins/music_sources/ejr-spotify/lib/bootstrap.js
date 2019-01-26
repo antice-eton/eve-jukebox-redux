@@ -19,7 +19,7 @@ module.exports = function(appConfig) {
         clientID: appConfig.spotify.client_id,
         clientSecret: appConfig.spotify.client_secret,
         scope: appConfig.spotify.scopes.join(' '),
-        callbackURL: 'http://localhost:8080/api/mp/spotify/verify',
-        showDialog: true
+        callbackURL: appConfig.spotify.callback_url,
+        showDialog: false
     }, spotify_sso_callback));
 }

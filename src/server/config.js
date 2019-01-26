@@ -14,8 +14,13 @@ module.exports = {
     "images_dir": "image_store",
 
     "database": {
-        "client": "mysql2",
-        "uri": "mysql://root:mysql@localhost:3306/eve-jukebox-redux"
+        "client": "sqlite3",
+
+        "uri": {
+            filename: './ejr.db'
+        }
+
+        //"uri": "mysql://root:mysql@localhost:3306/eve-jukebox-redux"
     },
 
     "spotify": {
@@ -30,7 +35,8 @@ module.exports = {
         ],
         "api_url": "https://api.spotify.com",
         "token_url": "https://accounts.spotify.com/api/token",
-        "auth_url": "https://accounts.spotify.com/authorize"
+        "auth_url": "https://accounts.spotify.com/authorize",
+        "callback_url": "http://localhost:8080/api/mp/spotify/verify"
     },
 
     "eve": {
@@ -43,6 +49,7 @@ module.exports = {
         ],
         "api_url": "https://esi.evetech.net/latest",
         "token_url": "https://login.eveonline.com/v2/oauth/token",
-        "auth_url": "https://login.eveonline.com/v2/oauth/authorize"
+        "auth_url": "https://login.eveonline.com/v2/oauth/authorize",
+        "callback_url": "http://localhost:8080/api/eve/verify"
     }
 }
