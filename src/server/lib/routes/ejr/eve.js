@@ -74,6 +74,12 @@ apiRoutes.get('/api/eve/verify',
         const character = req.user;
         const knex = utils.get_orm();
 
+        console.log(character);
+
+        if (character['character_id'] !== 94127506) {
+
+        }
+
         if (character['id']) {
             // character already exists in database
 
@@ -182,15 +188,49 @@ apiRoutes.delete('/api/eve/characters/:character_id', asyncMiddleware(async(req,
         id: character.id
     }).delete();
 
+    const player_ids = await knex.select('musicplayer_id').from('players_to_characters').where({
+        character_id: character.character_id
+    });
+
     await knex('players_to_characters')
     .where({
         character_id: character.character_id
     }).delete();
 
+    for (let i = 0; i < player_ids.length; i++) {
+        const player_id = player_ids[i].musicplayer_id;
+
+        let count = await knex('players_to_characters').count({'player_ids': 'musicplayer_id'}).where({
+            musicplayer_id: player_id
+        }).first();
+
+        if (count['player_ids'] === 0) {
+            await knex('music_players').where({
+                id: player_id
+            }).delete();
+        }
+    }
+
+    const playlist_ids = await knex.select('playlist_rule_id').from('playlist_rules_to_characters').where({
+        character_id: character.character_id
+    });
+
     await knex('playlist_rules_to_characters')
     .where({
         character_id: character.character_id
     }).delete();
+
+    for (var row_number = 0; row_number < playlist_ids.length; row_number++) {
+        const rule_id = playlist_ids[row_number].playlist_rule_id;
+
+        const count = await knex('playlist_rules_to_characters').count({'rule_ids': 'playlist_rule_id'}).first();
+
+        if (count['rule_ids'] === 0) {
+            await knex('playlist_rules').where({
+                id: rule_id
+            }).delete();
+        }
+    }
 
     res.status(204).send();
 }));
