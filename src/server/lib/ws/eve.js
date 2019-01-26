@@ -76,9 +76,6 @@ async function target_playlist(location, client) {
 
                 const security = Math.round(location.system.security_status * 10) / 10;
 
-                console.log('Checking security:', security, ' - against:', c.criteria);
-
-
                 if (security >= 0.5 && c.criteria === 'high-sec') {
                     return playlists[i];
                 } else if (security < 0.5 && security >= 0.1 && c.criteria === 'low-sec') {
@@ -86,6 +83,10 @@ async function target_playlist(location, client) {
                 } else if (security <= 0.0 && security >= -1.0 && c.criteria === 'null-sec') {
                     return playlists[i];
                 } else if (security == c.criteria) {
+                    return playlists[i];
+                }
+            } else if (c.type === 'docked') {
+                if (location.docked === true ){
                     return playlists[i];
                 }
             }
