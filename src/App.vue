@@ -33,8 +33,8 @@
         </v-content>
         <v-content v-else key="character">
             <v-container fluid>
-                <v-layout justify-center>
-                    <v-flex xs8>
+                <v-layout>
+                    <v-flex xs12 md8 offset-md2 lg7 offset-lg3 xl6 offset-xl3>
                         <EveCharacterCard/>
                     </v-flex>
                 </v-layout>
