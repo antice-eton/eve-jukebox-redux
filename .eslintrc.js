@@ -12,6 +12,7 @@ module.exports = {
   rules: {
     'no-console': 'off',
     'no-debugger': 'off',
+    'indent': ['error', 4]
   },
 
   parserOptions: {
