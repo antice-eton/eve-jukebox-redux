@@ -1,5 +1,6 @@
 const get_logger = require('../../utils.js').get_logger;
 const logger = get_logger();
+const express = require('express');
 
 module.exports = async function() {
 
@@ -59,6 +60,8 @@ module.exports = async function() {
             app.use('/api/mp', musicSource['routes']);
         }
     });
+
+    app.use(express.static('dist'));
 
     app.use((err, req, res, next) => {
         logger.error('Unhandled Exception');
