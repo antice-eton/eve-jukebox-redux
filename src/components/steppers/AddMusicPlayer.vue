@@ -45,18 +45,13 @@
 
 <script>
 
+import ejrPlugins from '../../plugins/music_sources/ejr-plugins-ui.js';
+
 export default {
 
     data() {
         return {
             add_musicplayer_step: 1,
-            plugins: [{
-                text: 'Spotify',
-                value: 'spotify'
-            },{
-                text: 'Foobar2000',
-                value: 'foobar'
-            }],
             form: {
                 selected_plugin: null
             }
@@ -70,6 +65,17 @@ export default {
             if (this.form['selected_plugin']) {
                 return 'ejr-' + this.form.selected_plugin + '-setup';
             }
+        },
+
+        plugins() {
+            const plugins = Object.keys(ejrPlugins).map((key) => {
+                return {
+                    text: ejrPlugins[key].label,
+                    value: key
+                }
+            });
+
+            return plugins;
         }
     },
 
