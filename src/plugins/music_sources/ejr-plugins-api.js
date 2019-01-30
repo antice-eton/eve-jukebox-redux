@@ -7,5 +7,9 @@ module.exports = {
         client: require('./ejr-spotify/lib/client.js'),
         routes: require('./ejr-spotify/lib/routes.js').routes,
         bootstrap: require('./ejr-spotify/lib/bootstrap.js')
+    },
+    musicbee: {
+        client: require('./ejr-musicbee/lib/client.js'),
+        routes: require('./ejr-musicbee/lib/routes.js').routes
     }
 };

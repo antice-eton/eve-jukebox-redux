@@ -7,6 +7,7 @@ const asyncMiddleware = require('../../../../server/lib/routes/routeUtils.js').a
 const utils = require('../../../../server/utils.js');
 
 const uuidv1 = require('uuid/v1');
+const install_plugin = require('../../../../server/lib/plugins.js').install_plugin;
 
 apiRoutes.get('/spotify/status', asyncMiddleware(async (req, res, next) => {
     const user = await User.findOne({where: {session_id: req.session.id}});
@@ -52,21 +53,7 @@ apiRoutes.get('/spotify/verify',
             configuration: JSON.stringify(spotify_config)
         };
 
-        await knex('music_players').insert(musicPlayer);
-
-
-        var character_ids = [];
-
-        character_ids = await knex.select('character_id').from('eve_characters').where({
-            session_id: req.session.id
-        });
-
-        for (let i = 0; i < character_ids.length; i++) {
-            await knex('players_to_characters').insert({
-                musicplayer_id: musicPlayer.id,
-                character_id: character_ids[i].character_id
-            });
-        }
+        await install_plugin(musicPlayer, req.session.id, knex);
 
         res.send(`
         <html><body><script>

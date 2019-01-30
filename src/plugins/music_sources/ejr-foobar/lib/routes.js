@@ -5,6 +5,8 @@ const axios = require('axios');
 const knex = require('../../../../server/utils.js').get_orm();
 
 const asyncMiddleware = require('../../../../server/lib/routes/routeUtils.js').asyncMiddleware;
+const uuidv1 = require('uuid/v1');
+const install_plugin = require('../../../../server/lib/plugins.js').install_plugin;
 
 apiRoutes.post('/foobar/install', asyncMiddleware(async (req, res, next) => {
 
@@ -21,10 +23,10 @@ apiRoutes.post('/foobar/install', asyncMiddleware(async (req, res, next) => {
         service_name: 'foobar',
         service_displayName: 'Foobar',
         configuration: JSON.stringify(req.body),
-        character_id: character_id
+        id: uuidv1()
     };
 
-    await knex('music_players').insert(music_player);
+    await install_plugin(music_player, req.session.id, knex);
 
     res.json({ok: true});
 }));
