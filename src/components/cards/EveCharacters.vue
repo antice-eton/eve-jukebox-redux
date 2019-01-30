@@ -1,7 +1,8 @@
 <template>
 <v-card class="elevation-12">
     <v-toolbar dark>
-        <v-toolbar-title>EVE Online Characters</v-toolbar-title>
+        <v-toolbar-title v-if="dialog === true">EVE Online Characters</v-toolbar-title>
+        <v-toolbar-title v-else>EVE Jukebox Redux</v-toolbar-title>
     </v-toolbar>
     <v-card-text v-if="loading">
         <v-progress-circular
@@ -10,9 +11,14 @@
     </v-card-text>
 
     <v-card-text v-else>
-        <p v-if="dialog === false">
-            Welcome to EVE Jukebox Redux. This new tool is currently in a closed beta and is only available to certain individuals. It will be made public soon.
-        </p>
+        <template v-if="dialog === false">
+            <p>
+                Welcome to EVE Jukebox Redux. EJR is a new tool that can tell your music player of choice to play different playlists based on where you are in New Eden.
+            </p>
+            <p>
+                EJR is presently in beta. If you encounter any issues or wish to request a new feature or support for a different media player, please visit <a href="https://github.com/antice-eton/eve-jukebox-redux">https://github.com/antice-eton/eve-jukebox-redux</a>.
+            </p>
+        </template>
         <p v-if="characters.length === 0">
             You have no EVE Online characters registered. Click the button below to add a character.
         </p>
@@ -90,7 +96,15 @@
 
 </v-card>
 </template>
+<style>
+a {
+    color: #aaa;
+}
 
+a:hover {
+    color: #eee;
+}
+</style>
 <script>
 
 

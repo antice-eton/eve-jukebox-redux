@@ -23,7 +23,6 @@ Vue.config.productionTip = false;
 import ejrPlugins from './plugins/music_sources/ejr-plugins-ui.js';
 
 Object.keys(ejrPlugins).forEach((pluginName) => {
-    console.log('adding views for: ', pluginName);
     if (ejrPlugins[pluginName].setup) {
         Vue.component('ejr-' + pluginName + '-setup', ejrPlugins[pluginName].setup);
     }
