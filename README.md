@@ -8,8 +8,9 @@ EJR is written and maintained by Antice Eton.
 
 ## Supported Music Players
 
-1. Foobar2000 ( required the [Beefweb Remote Control](http://www.foobar2000.org/components/view/foo_beefweb) plugin )
+1. Foobar2000 ( requires the [Beefweb Remote Control](http://www.foobar2000.org/components/view/foo_beefweb) plugin )
 2. Spotify
+3. MusicBee ( requires the [MusicBee Remote Control](https://getmusicbee.com/addons/plugins/75/musicbee-remote-plugin/) plugin )
 
 ## FAQ
 
